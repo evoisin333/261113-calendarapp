@@ -65,6 +65,15 @@ Pour chaque choix : la raison, l'alternative écartée et la limite que ça indu
 - **Rebond et « retour arrière » du navigateur bloqués** (`overscroll-behavior: none`).
 - **Numéro de version `?v=` sur les fichiers dans `index.html`.** Raison : sans ça, les téléphones gardaient l'ancien `style.css` ou `app.js` en mémoire et l'appli s'affichait cassée. Limite : il faut changer ce numéro à chaque mise à jour.
 
+## Étape 4 : appli installable et hors connexion (13/11/2026)
+
+- **Appli installable (PWA)** : `manifest.json` (nom « Nous deux », plein écran), icônes PNG (trois ronds pastel sur fond gris foncé), dont une version « masquable » pour les icônes rondes d'Android et une 180 px pour l'iPhone.
+- **Service worker `sw.js`** : la page est toujours redemandée au serveur (copie seulement sans réseau ou après 4 s d'attente) ; les fichiers avec numéro `?v=` et les bibliothèques sont pris dans la copie. Raison : l'appli s'ouvre sans réseau et les mises à jour arrivent seules à l'ouverture suivante. Alternative écartée : un bandeau « Nouvelle version, toucher pour recharger ». Limite : la nouvelle version n'apparaît qu'à la 2e ouverture si le réseau est très lent.
+- **Les données Supabase ne passent jamais par le service worker.** La copie hors ligne des événements est dans le stockage du téléphone (`localStorage`). Raison : simple, et les droits restent vérifiés par Supabase à chaque échange. Limite vie privée : une copie des événements reste sur le téléphone ; elle est effacée à la déconnexion.
+- **Hors connexion : lecture seule** (bandeau, « + », glisser et « Enregistrer » bloqués), comme prévu au cadrage.
+- **Sans réseau, l'appli s'ouvre tout de suite avec la copie.** Raison : supabase-js réessaie pendant plusieurs secondes (jusqu'à ~30 s pour renouveler une session expirée) avant d'abandonner : sans ça, écran vide. Limite : sur un wifi sans internet, l'appli attend 3 s avant de prendre la copie.
+- **Rotation de l'écran** : la fusion des blocs « Nous » est refaite après chaque changement de taille (l'option `windowResize` n'existe plus dans FullCalendar 7).
+
 ## Idées pour la v2 💡
 
 - **Voir nos événements dans le Calendrier Apple** : un lien d'abonnement `.ics` secret, fabriqué par une Edge Function Supabase (gratuit). Limite : sens unique (lecture seule dans Apple), mise à jour avec du retard, et quiconque a le lien voit les événements.

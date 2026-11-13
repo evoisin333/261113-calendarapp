@@ -5,6 +5,7 @@
 // 3d : recherche (titre, lieu, notes ; sans accents ni majuscules).
 // 3e : glisser-déposer (déplacer, changer la durée).
 // 3f : apparence (style C : pilules, bande semaine, menu calendriers, mois sans cases, zoom du mois).
+// 4  : appli installable (service worker) et lecture seule hors connexion.
 
 const FUSEAU = "Europe/Brussels";
 // Vue jour : une colonne par calendrier (vue « ressources » de FullCalendar Premium, licence AGPLv3)
@@ -29,6 +30,8 @@ let canalTempsReel = null;
 let calendriersMasques = new Set(lireReglage("calendriersMasques", []));
 let prenomConnecte = "";
 let moisDetaille = lireReglage("moisDetaille", false);   // vue mois zoomée (titres et heures)
+let horsLigne = false;        // pas de réseau : lecture seule, avec la copie du téléphone
+let sansSession = false;      // démarré hors ligne avec une session expirée (Supabase la renouvellera)
 
 
 // ---------- Réglages gardés sur ce téléphone (vue, calendriers masqués) ----------
@@ -48,6 +51,41 @@ function ecrireReglage(cle, valeur) {
   } catch {
     // stockage indisponible : tant pis, le réglage ne sera pas gardé
   }
+}
+
+
+// ---------- Copie hors connexion (gardée sur ce téléphone, effacée à la déconnexion) ----------
+
+const CLE_COPIE = "copieHorsLigne";
+// Nom sous lequel supabase-js garde la session, ex. "sb-npcopdfvmtfjcygifree-auth-token"
+const CLE_SESSION = `sb-${new URL(CONFIG.supabaseUrl).hostname.split(".")[0]}-auth-token`;
+
+function sauverCopie() {
+  ecrireReglage(CLE_COPIE, { calendriers, prenomConnecte, evenements: lignesEvenements, le: Date.now() });
+}
+function lireCopie() { return lireReglage(CLE_COPIE, null); }
+function effacerCopie() { try { localStorage.removeItem(CLE_COPIE); } catch { /* rien à effacer */ } }
+function sessionGardee() { try { return localStorage.getItem(CLE_SESSION) !== null; } catch { return false; } }
+
+// Erreur due au réseau ? (Chrome : « Failed to fetch », Safari : « Load failed »)
+function estErreurReseau(erreur) {
+  return !navigator.onLine || /fetch|load failed|network/i.test(erreur?.message ?? "");
+}
+function texteErreur(erreur) {
+  return estErreurReseau(erreur) ? "pas de connexion internet." : erreur.message;
+}
+
+
+// ---------- Service worker : l'appli s'ouvre même sans réseau (voir sw.js) ----------
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").then(async () => {
+    const actif = (await navigator.serviceWorker.ready).active;
+    // Fichiers déjà chargés par cette page : le service worker en garde une copie
+    const adresses = [location.href, ...performance.getEntriesByType("resource").map((r) => r.name)]
+      .filter((a) => a.startsWith(location.origin) || a.startsWith("https://cdn.jsdelivr.net/"));
+    actif?.postMessage({ type: "copier", adresses });
+  }).catch((erreur) => console.warn("Service worker", erreur));
 }
 
 
@@ -167,20 +205,40 @@ document.getElementById("formulaire-connexion").addEventListener("submit", async
 
 // "local" : déconnecte seulement ce téléphone, pas l'autre
 document.getElementById("bouton-deconnexion").addEventListener("click", () => {
+  effacerCopie();
   client.auth.signOut({ scope: "local" });
 });
 
 // Appelé au lancement (session gardée ou non), à la connexion et à la déconnexion.
 // setTimeout : la doc Supabase déconseille d'appeler Supabase directement dans ce rappel.
 client.auth.onAuthStateChange((_evenement, session) => {
-  utilisateurId = session?.user?.id ?? null;
   setTimeout(() => {
-    if (session && !appliDemarree) demarrerAppli();
-    if (!session) afficherConnexion();
+    if (session) {
+      utilisateurId = session.user.id;
+      if (!appliDemarree) demarrerAppli();
+      else if (sansSession) reprendreAvecSession();
+    } else if (sessionGardee() && lireCopie()) {
+      // Hors connexion avec une session expirée : Supabase la garde mais ne peut pas la renouveler
+      // sans réseau. On affiche la copie ; il la renouvellera dès que le réseau revient.
+      sansSession = true;
+      if (!appliDemarree) demarrerAppli();
+    } else {
+      afficherConnexion();
+    }
   }, 0);
 });
 
+// Le réseau est revenu et Supabase a renouvelé la session
+function reprendreAvecSession() {
+  sansSession = false;
+  chargerEvenements();
+  ecouterTempsReel();
+}
+
 function afficherConnexion() {
+  effacerCopie();
+  utilisateurId = null;
+  sansSession = false;
   arreterAppli();
   ecranAppli.hidden = true;
   ecranConnexion.hidden = false;
@@ -195,20 +253,35 @@ async function demarrerAppli() {
   ecranAppli.hidden = false;
   erreurAppli.textContent = "";
 
-  const { data, error } = await client.from("calendriers").select("id, nom, couleur").order("id");
-  if (error) return afficherErreur("Chargement des calendriers", error);
-  calendriers = data;
+  const copie = lireCopie();
+  // Téléphone hors réseau : on prend tout de suite la copie (sinon Supabase réessaie pendant ~7 s)
+  const sansReseau = sansSession || (!navigator.onLine && copie);
+  const { data, error } = sansReseau ? { error: { message: "hors connexion" } }
+    : await client.from("calendriers").select("id, nom, couleur").order("id");
+  if (error && (sansReseau || estErreurReseau(error)) && copie) {
+    // Pas de réseau : on démarre avec la copie du téléphone
+    calendriers = copie.calendriers;
+    prenomConnecte = copie.prenomConnecte;
+    lignesEvenements = copie.evenements;
+    passerHorsLigne();
+  } else if (error) {
+    return afficherErreur("Chargement des calendriers",
+      estErreurReseau(error) ? { message: "pas de connexion internet (et aucune copie sur ce téléphone)." } : error);
+  } else {
+    calendriers = data;
+    // Calendrier proposé par défaut : celui qui porte le prénom de la personne connectée
+    const { data: moi } = await client.from("membres").select("prenom").eq("user_id", utilisateurId);
+    prenomConnecte = moi?.[0]?.prenom ?? copie?.prenomConnecte ?? "";
+  }
   if (calendriers.length === 0) {
     erreurAppli.textContent = "Ce compte n'a accès à aucun calendrier.";
   }
-
-  // Calendrier proposé par défaut : celui qui porte le prénom de la personne connectée
-  const { data: moi } = await client.from("membres").select("prenom").eq("user_id", utilisateurId);
-  prenomConnecte = moi?.[0]?.prenom ?? "";
   calendrierParDefaut = calendriers.find((c) => c.nom === prenomConnecte)?.id ?? 3;
 
   document.getElementById("bouton-ajouter").hidden = calendriers.length === 0;
   creerCalendrier();
+  if (horsLigne) appliquerLectureSeule();
+  if (sansSession) return;   // la suite quand le réseau revient (reprendreAvecSession)
   await chargerEvenements();
   ecouterTempsReel();
 }
@@ -221,6 +294,8 @@ function arreterAppli() {
   calendrier = null;
   calendriers = [];
   lignesEvenements = [];
+  horsLigne = false;
+  bandeauHorsLigne.hidden = true;
 }
 
 // Heure de départ de l'affichage en vue jour/semaine : 1 h avant maintenant
@@ -299,7 +374,6 @@ function creerCalendrier() {
       majLigneJournee(evenements);
       requestAnimationFrame(fusionnerNous);
     },
-    windowResize: () => requestAnimationFrame(fusionnerNous),
     // Création : appui long (puis glisser pour allonger), le formulaire s'ouvre au lâcher.
     // Pas d'« appui court » (dateClick) : sur iPhone il se déclenche dès que le doigt se pose
     // et empêche l'appui long. Comme dans le Calendrier de l'iPhone, toucher une case ne fait rien.
@@ -355,6 +429,7 @@ function creerCalendrier() {
 
 // Recharge tous les événements (par paquets de 1000, la limite de l'API)
 async function chargerEvenements() {
+  if (!navigator.onLine) return passerHorsLigne();   // inutile d'essayer
   const TAILLE_PAQUET = 1000;
   let toutes = [];
   for (let depart = 0; ; depart += TAILLE_PAQUET) {
@@ -363,13 +438,52 @@ async function chargerEvenements() {
       .select("*")
       .order("id")
       .range(depart, depart + TAILLE_PAQUET - 1);
+    if (error && estErreurReseau(error)) return passerHorsLigne();   // on garde ce qui est affiché
     if (error) return afficherErreur("Chargement des événements", error);
     toutes = toutes.concat(data);
     if (data.length < TAILLE_PAQUET) break;
   }
   lignesEvenements = toutes;
+  sauverCopie();
+  repasserEnLigne();
   if (calendrier) calendrier.refetchEvents();
 }
+
+// ---------- Hors connexion : lecture seule ----------
+
+const bandeauHorsLigne = document.getElementById("bandeau-hors-ligne");
+
+function passerHorsLigne() {
+  horsLigne = true;
+  // Rien d'affiché encore (lancement sans réseau) : on prend la copie
+  if (lignesEvenements.length === 0 && lireCopie()) {
+    lignesEvenements = lireCopie().evenements;
+    calendrier?.refetchEvents();
+  }
+  appliquerLectureSeule();
+}
+
+function repasserEnLigne() {
+  if (!horsLigne) return;
+  horsLigne = false;
+  appliquerLectureSeule();
+}
+
+// Bandeau, et plus d'appui long ni de glisser tant qu'on est hors ligne
+function appliquerLectureSeule() {
+  bandeauHorsLigne.hidden = !horsLigne;
+  document.getElementById("bouton-ajouter").classList.toggle("eteint", horsLigne);
+  if (!calendrier) return;
+  calendrier.setOption("selectable", !horsLigne);
+  calendrier.setOption("editable", !horsLigne);
+}
+
+window.addEventListener("offline", () => { if (appliDemarree) passerHorsLigne(); });
+window.addEventListener("online", () => {
+  if (!appliDemarree) return;
+  if (sansSession) client.auth.getSession();   // relance le renouvellement de la session
+  else chargerEvenements();
+});
 
 // Temps réel : à chaque changement, on recharge tout (simple et sûr, validé à l'étape 1)
 function ecouterTempsReel() {
@@ -386,7 +500,7 @@ function ecouterTempsReel() {
 
 // Retour sur l'appli (le téléphone la met en pause en arrière-plan) : on recharge
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible" && appliDemarree) chargerEvenements();
+  if (document.visibilityState === "visible" && appliDemarree && !sansSession) chargerEvenements();
 });
 
 
@@ -559,6 +673,12 @@ function ouvrirFormulaire(ligne, depart = null, occurrence = null) {
   afficherChoixCalendrier(ligne?.calendrier_id ?? depart?.calendrierId ?? calendrierParDefaut);
   remplirRepetition(ligne?.regle_recurrence ?? null, dateDebut);
 
+  // Hors connexion : on peut regarder, pas modifier
+  for (const bouton of [boutonEnregistrer, boutonSupprimer, boutonDetacher, boutonSupprimerDate]) {
+    bouton.disabled = horsLigne;
+  }
+  if (horsLigne) erreurFormulaire.textContent = "Hors connexion : lecture seule.";
+
   fenetre.showModal();
   // Les roues ne peuvent être positionnées qu'une fois la fenêtre affichée
   roueDebut.regler(heureDebut);
@@ -567,6 +687,7 @@ function ouvrirFormulaire(ligne, depart = null, occurrence = null) {
 
 // Bouton « + » : prochaine heure pleine, aujourd'hui
 document.getElementById("bouton-ajouter").addEventListener("click", () => {
+  if (horsLigne) return afficherMessage("Hors connexion : impossible d'ajouter un événement.");
   const dansUneHeure = heureBruxelles(Date.now() + 3600000);
   ouvrirFormulaire(null, { date: dansUneHeure.slice(0, 10),
                            heure: `${dansUneHeure.slice(11, 13)}:00`, journeeEntiere: false });
@@ -615,7 +736,7 @@ boutonEnregistrer.addEventListener("click", async () => {
   const { error } = await requete;
   boutonEnregistrer.disabled = false;
 
-  if (error) { erreurFormulaire.textContent = `Enregistrement impossible : ${error.message}`; return; }
+  if (error) { erreurFormulaire.textContent = `Enregistrement impossible : ${texteErreur(error)}`; return; }
   fenetre.close();
   chargerEvenements();   // sans attendre le temps réel
 });
@@ -629,7 +750,7 @@ boutonSupprimer.addEventListener("click", async () => {
     return;
   }
   const { error } = await client.from("evenements").delete().eq("id", ligneEnCours.id);
-  if (error) { erreurFormulaire.textContent = `Suppression impossible : ${error.message}`; return; }
+  if (error) { erreurFormulaire.textContent = `Suppression impossible : ${texteErreur(error)}`; return; }
   fenetre.close();
   chargerEvenements();
 });
@@ -690,7 +811,7 @@ async function enregistrerDeplacement(info) {
   const { error } = await client.from("evenements").update(donnees).eq("id", ligne.id);
   if (error) {
     info.revert();   // l'événement revient à sa place
-    afficherMessage(`Déplacement impossible : ${error.message}`);
+    afficherMessage(`Déplacement impossible : ${texteErreur(error)}`);
     return;
   }
   chargerEvenements();
@@ -856,7 +977,7 @@ boutonSupprimerDate.addEventListener("click", async () => {
   const { error } = await client.from("evenements")
     .update({ dates_supprimees: avecDateSupprimee(ligneEnCours, occurrenceEnCours) })
     .eq("id", ligneEnCours.id);
-  if (error) { erreurFormulaire.textContent = `Suppression impossible : ${error.message}`; return; }
+  if (error) { erreurFormulaire.textContent = `Suppression impossible : ${texteErreur(error)}`; return; }
   fenetre.close();
   chargerEvenements();
 });
@@ -884,7 +1005,7 @@ boutonDetacher.addEventListener("click", async () => {
   const { data: nouvelle, error } = await client.from("evenements").insert(copie).select().single();
   if (error) {
     boutonDetacher.disabled = false;
-    erreurFormulaire.textContent = `Détachement impossible : ${error.message}`;
+    erreurFormulaire.textContent = `Détachement impossible : ${texteErreur(error)}`;
     return;
   }
   // 2) retirer la date de la série ; si ça échoue, on supprime la copie pour ne pas avoir de doublon
@@ -893,7 +1014,7 @@ boutonDetacher.addEventListener("click", async () => {
   if (erreurSerie) {
     await client.from("evenements").delete().eq("id", nouvelle.id);
     boutonDetacher.disabled = false;
-    erreurFormulaire.textContent = `Détachement impossible : ${erreurSerie.message}`;
+    erreurFormulaire.textContent = `Détachement impossible : ${texteErreur(erreurSerie)}`;
     return;
   }
   fenetre.close();
@@ -1207,6 +1328,10 @@ function remettreCopie(support) {
   support.style.visibility = "";
 }
 
+// Rotation du téléphone / changement de taille : FullCalendar redessine, on refusionne ensuite
+// (l'option windowResize n'existe plus dans FullCalendar 7)
+window.addEventListener("resize", () => setTimeout(fusionnerNous, 150));
+
 function fusionnerNous() {
   if (!calendrier) return;
   const copies = {};
@@ -1239,3 +1364,17 @@ function fusionnerNous() {
     }
   }
 }
+
+
+// ---------- Lancement sans réseau ----------
+// Sans réseau, Supabase réessaie de renouveler la session pendant jusqu'à ~30 s avant de répondre.
+// En attendant, on ouvre l'appli avec la copie du téléphone (lecture seule) ;
+// onAuthStateChange prend le relais dès que Supabase répond.
+// (À la fin du fichier : tout ce dont demarrerAppli a besoin est prêt.)
+function demarrerAvecCopie() {
+  if (appliDemarree || !sessionGardee() || !lireCopie()) return;
+  sansSession = true;
+  demarrerAppli();
+}
+if (!navigator.onLine) demarrerAvecCopie();
+else setTimeout(demarrerAvecCopie, 3000);   // réseau présent mais qui ne répond pas

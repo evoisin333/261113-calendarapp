@@ -96,6 +96,15 @@ button { cursor: pointer; }
 #etat-synchro.ok { background: #4CAF7A; opacity: 1; }
 #etat-synchro.probleme { background: var(--corail); opacity: 1; }
 
+/* Hors connexion (étape 4) : bandeau discret, boutons d'écriture éteints */
+#bandeau-hors-ligne {
+  width: fit-content; margin: 10px auto 0; padding: 5px 12px; border-radius: 999px;
+  font-size: 13px; font-weight: 600; color: var(--discret);
+  background: var(--pilule); border: 1px solid var(--pilule-bord);
+}
+.bouton-icone.eteint { opacity: 0.35; }
+button:disabled { opacity: 0.4; }
+
 #titre-periode { margin: 10px 0 0; padding: 0 20px; font-size: 34px; font-weight: 800; letter-spacing: -0.5px; line-height: 1.1; }
 #titre-periode .annee { color: var(--discret); font-weight: 600; }
 

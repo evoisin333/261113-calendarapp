@@ -6,6 +6,14 @@
   <meta name="color-scheme" content="light dark">
   <title>Nous deux</title>
 
+  <!-- Appli installable (étape 4) : fiche d'identité, icônes, couleur de la barre du téléphone -->
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icones/icone-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="icones/icone-180.png">
+  <meta name="apple-mobile-web-app-title" content="Nous deux">
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F4F4F6">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#15161A">
+
   <!-- FullCalendar 7.1.5 : styles (versions figées + empreintes) -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@7.1.5/skeleton.css"
         integrity="sha384-ItZqDS1kQQr9PzsooRNf0mHsnqcOr9PfpKMJIOrePGfWbEaF3pH/EXosd+/k/fIz" crossorigin="anonymous">
@@ -14,7 +22,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@7.1.5/themes/classic/palette.css"
         integrity="sha384-0awbN7leMDXzyw9bchwFr3H6OMf5Nt1nJF6kyOm3IAsLFa0qH3Rh4G5u8wfC5b+A" crossorigin="anonymous">
   <!-- ?v=… : numéro de version, à changer à chaque mise à jour (sinon le téléphone garde l'ancien fichier) -->
-  <link rel="stylesheet" href="style.css?v=2026-11-13-3f4">
+  <link rel="stylesheet" href="style.css?v=2026-11-13-4b">
 </head>
 <body>
 
@@ -55,6 +63,7 @@
         <button id="bouton-ajouter" class="bouton-icone" aria-label="Nouvel événement"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
       </div>
     </header>
+    <p id="bandeau-hors-ligne" role="status" hidden>Hors connexion · lecture seule</p>
     <h1 id="titre-periode"></h1>
     <div id="bande-semaine" class="bande-semaine" hidden></div>
     <p id="erreur-appli" class="erreur"></p>
@@ -179,7 +188,7 @@
   </dialog>
 
   <!-- Configuration, puis bibliothèques (versions figées + empreintes). L'ordre compte. -->
-  <script src="config.js?v=2026-11-13-3f4"></script>
+  <script src="config.js?v=2026-11-13-4b"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/dist/umd/supabase.js"
           integrity="sha384-uteMfOloLDGt042uDz+xHGF3ym63/WQ6rFq7murQRG8Ih7QrXGEGNtWd8688sb4O" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/rrule@2.8.1/dist/es5/rrule.min.js"
@@ -195,6 +204,6 @@
           integrity="sha384-IoWWTl5788WGfhuiVj3pVNcO+keGpOmkklBgW51lS80OOxTWpCP3Y0rpwD5nuubf" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/rrule@7.1.5/global.js"
           integrity="sha384-qDlTn7aedGX/dP8oNjTvOY1u7rSJMmGFc1UylHS9Zed/AUc77adbybZF4jzd1L/6" crossorigin="anonymous"></script>
-  <script src="app.js?v=2026-11-13-3f4"></script>
+  <script src="app.js?v=2026-11-13-4b"></script>
 </body>
 </html>
