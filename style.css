@@ -37,6 +37,8 @@
 html, body {
   margin: 0;
   height: 100%;
+  /* pas de « retour en arrière » ni de rebond quand on glisse le doigt pour changer de période */
+  overscroll-behavior: none;
   background: var(--fond);
   color: var(--texte);
   font-family: -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", sans-serif;
@@ -175,6 +177,13 @@ button { cursor: pointer; }
 .detail-mois .heure { font-size: 11px; opacity: 0.75; font-variant-numeric: tabular-nums; }
 
 .lien-plus { border: 0 !important; color: var(--discret) !important; font-size: 12px; justify-content: center; }
+
+/* Vue jour : en-tête des colonnes Emma / Mattia / Nous */
+.entete-colonne { border-color: transparent !important; padding: 4px 0 6px !important; }
+.nom-colonne {
+  display: inline-block; padding: 3px 12px; border-radius: 999px; font-size: 13px; font-weight: 700;
+  background: var(--couleur); color: var(--texte-pastel);
+}
 
 /* Vues jour et semaine : titre en gras, heure plus petite */
 .titre-evt { font-size: 14px; font-weight: 700; }

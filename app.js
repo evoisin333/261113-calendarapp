@@ -7,6 +7,8 @@
 // 3f : apparence (style C : pilules, bande semaine, menu calendriers, mois sans cases, zoom du mois).
 
 const FUSEAU = "Europe/Brussels";
+// Vue jour : une colonne par calendrier (vue « ressources » de FullCalendar Premium, licence AGPLv3)
+const VUE_JOUR = "resourceTimeGridDay";
 const client = supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseCle);
 
 const ecranConnexion = document.getElementById("ecran-connexion");
@@ -75,6 +77,7 @@ function versFullCalendar(ligne) {
     title: ligne.titre,
     color: couleur,
     contrastColor: "#1f2937",   // texte foncé sur les couleurs pastel
+    resourceId: String(ligne.calendrier_id),   // sa colonne en vue jour
   };
 
   if (!ligne.regle_recurrence) {
@@ -226,7 +229,22 @@ function creerCalendrier() {
     timeZone: FUSEAU,
     locale: "fr",
     firstDay: 1,                                     // lundi
-    initialView: lireReglage("vue", "timeGridDay"),
+    initialView: lireReglage("vue", VUE_JOUR).replace(/^timeGridDay$/, VUE_JOUR),
+    // FullCalendar Premium : gratuit pour les projets open source sous licence AGPLv3 (voir LICENSE)
+    schedulerLicenseKey: "AGPL-My-Frontend-And-Backend-Are-Open-Source",
+    // Colonnes de la vue jour : les calendriers affichés, dans l'ordre Emma, Mattia, Nous
+    resources: (_info, succes) => succes(calendriers
+      .filter((c) => !calendriersMasques.has(c.id))
+      .map((c) => ({ id: String(c.id), title: c.nom, extendedProps: { couleur: c.couleur } }))),
+    resourceOrder: "id",
+    resourceDayHeaderClass: "entete-colonne",
+    resourceDayHeaderContent: (info) => {
+      const nom = document.createElement("span");
+      nom.className = "nom-colonne";
+      nom.style.setProperty("--couleur", info.resource.extendedProps.couleur);
+      nom.textContent = info.resource.title;
+      return { domNodes: [nom] };
+    },
     headerToolbar: false,                            // nos propres pilules en haut et en bas
     footerToolbar: false,
     height: "100%",
@@ -235,7 +253,7 @@ function creerCalendrier() {
     allDayText: "Journée",
     // Jour et semaine : la bande semaine remplace l'en-tête des colonnes
     views: {
-      timeGridDay: { dayHeaders: false },
+      resourceTimeGridDay: { datesAboveResources: false },
       timeGridWeek: { dayHeaders: false, displayEventTime: false },   // colonnes étroites : le titre seul
       // eventDisplay "block" : tous les événements en étiquettes pleines (pas de point + heure)
       dayGridMonth: { dayHeaderFormat: { weekday: "narrow" }, fixedWeekCount: false, showNonCurrentDates: false,
@@ -286,6 +304,7 @@ function creerCalendrier() {
         ? info.start.getTime() + 3600000 : info.end;
       const fin = heureBruxelles(finChoisie);
       ouvrirFormulaire(null, {
+        calendrierId: info.resource ? Number(info.resource.id) : null,   // colonne de la vue jour
         date: debut.slice(0, 10), heure: debut.slice(11, 16), journeeEntiere: info.allDay,
         // journée entière : la fin de FullCalendar est exclusive, le formulaire montre le dernier jour
         dateFin: info.allDay ? ajouterJours(fin.slice(0, 10), -1) : fin.slice(0, 10),
@@ -526,7 +545,7 @@ function ouvrirFormulaire(ligne, depart = null, occurrence = null) {
   fenetre.classList.toggle("journee-entiere", journeeEntiere);
   champDateDebut.value = dateDebut;
   champDateFin.value = dateFin;
-  afficherChoixCalendrier(ligne?.calendrier_id ?? calendrierParDefaut);
+  afficherChoixCalendrier(ligne?.calendrier_id ?? depart?.calendrierId ?? calendrierParDefaut);
   remplirRepetition(ligne?.regle_recurrence ?? null, dateDebut);
 
   fenetre.showModal();
@@ -653,6 +672,8 @@ async function enregistrerDeplacement(info) {
       fin: (end ?? new Date(start.getTime() + dureeAvant)).toISOString(),
     };
   }
+
+  if (info.newResource) donnees.calendrier_id = Number(info.newResource.id);   // autre colonne = autre calendrier
 
   const { error } = await client.from("evenements").update(donnees).eq("id", ligne.id);
   if (error) {
@@ -956,7 +977,7 @@ function creerResultat(ligne, debut) {
   // Toucher un résultat : on va à ce jour, en vue jour, à l'heure de l'événement
   bouton.addEventListener("click", () => {
     fenetreRecherche.close();
-    calendrier.changeView("timeGridDay", debut.slice(0, 10));
+    calendrier.changeView(VUE_JOUR, debut.slice(0, 10));
     if (!ligne.journee_entiere) calendrier.scrollToTime(`${String(Math.max(Number(debut.slice(11, 13)) - 1, 0)).padStart(2, "0")}:00:00`);
   });
   return bouton;
@@ -1015,11 +1036,11 @@ function majEntete() {
     bouton.setAttribute("aria-label", date);
     if (i >= 5) bouton.classList.add("week-end");
     if (date === aujourdhui) bouton.classList.add("aujourdhui");
-    if (vue === "timeGridDay" && date === dateAffichee) bouton.classList.add("choisi");
+    if (vue === VUE_JOUR && date === dateAffichee) bouton.classList.add("choisi");
     bouton.append(Object.assign(document.createElement("span"), { className: "lettre", textContent: LETTRES_JOURS[i] }),
                   Object.assign(document.createElement("span"), { className: "num", textContent: Number(date.slice(8)) }));
     // Toucher un jour : vue jour sur ce jour
-    bouton.addEventListener("click", () => calendrier.changeView("timeGridDay", date));
+    bouton.addEventListener("click", () => calendrier.changeView(VUE_JOUR, date));
     bandeSemaine.append(bouton);
   }
 
@@ -1078,6 +1099,7 @@ function afficherMenuCalendriers() {
 function changerCalendriersMasques() {
   ecrireReglage("calendriersMasques", [...calendriersMasques]);
   afficherMenuCalendriers();
+  calendrier?.refetchResources();
   calendrier?.refetchEvents();
 }
 
@@ -1125,3 +1147,29 @@ zoneCalendrier.addEventListener("touchmove", (evenement) => {
 }, { passive: true });
 // Safari : empêche le zoom de toute la page quand on écarte deux doigts sur le calendrier
 zoneCalendrier.addEventListener("gesturestart", (evenement) => evenement.preventDefault());
+
+
+
+// ---------- Glisser le doigt à gauche / à droite : jour, semaine ou mois suivant / précédent ----------
+
+let departGlisse = null;
+function debutGlisse(evenement) {
+  departGlisse = evenement.touches.length === 1
+    ? { x: evenement.touches[0].clientX, y: evenement.touches[0].clientY, t: Date.now() } : null;
+}
+function finGlisse(evenement) {
+  if (!departGlisse || !calendrier) return;
+  const doigt = evenement.changedTouches[0];
+  const dx = doigt.clientX - departGlisse.x;
+  const dy = doigt.clientY - departGlisse.y;
+  const duree = Date.now() - departGlisse.t;
+  departGlisse = null;
+  // Un geste rapide (pas un appui long, qui sert à créer ou déplacer), surtout horizontal
+  if (duree < 400 && Math.abs(dx) > 70 && Math.abs(dx) > 2 * Math.abs(dy)) {
+    if (dx < 0) calendrier.next(); else calendrier.prev();
+  }
+}
+for (const zone of [zoneCalendrier, bandeSemaine]) {
+  zone.addEventListener("touchstart", debutGlisse, { passive: true });
+  zone.addEventListener("touchend", finGlisse, { passive: true });
+}

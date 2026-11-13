@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@7.1.5/themes/classic/palette.css"
         integrity="sha384-0awbN7leMDXzyw9bchwFr3H6OMf5Nt1nJF6kyOm3IAsLFa0qH3Rh4G5u8wfC5b+A" crossorigin="anonymous">
   <!-- ?v=… : numéro de version, à changer à chaque mise à jour (sinon le téléphone garde l'ancien fichier) -->
-  <link rel="stylesheet" href="style.css?v=2026-11-13-3f">
+  <link rel="stylesheet" href="style.css?v=2026-11-13-3f2">
 </head>
 <body>
 
@@ -62,7 +62,7 @@
     <footer class="barre-bas">
       <button id="bouton-aujourdhui" class="pilule pilule-texte">Aujourd'hui</button>
       <div class="pilule choix-vue">
-        <button data-vue="timeGridDay">Jour</button>
+        <button data-vue="resourceTimeGridDay">Jour</button>
         <button data-vue="timeGridWeek">Semaine</button>
         <button data-vue="dayGridMonth">Mois</button>
       </div>
@@ -179,19 +179,22 @@
   </dialog>
 
   <!-- Configuration, puis bibliothèques (versions figées + empreintes). L'ordre compte. -->
-  <script src="config.js?v=2026-11-13-3f"></script>
+  <script src="config.js?v=2026-11-13-3f2"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/dist/umd/supabase.js"
           integrity="sha384-uteMfOloLDGt042uDz+xHGF3ym63/WQ6rFq7murQRG8Ih7QrXGEGNtWd8688sb4O" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/rrule@2.8.1/dist/es5/rrule.min.js"
           integrity="sha384-/841P5sCxcfR/THAcUhWr9d8zrIF1TPFzXRz8YhqxlPKvyL3tA/Ns4ytyfN5/hZh" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@7.1.5/all/global.js"
           integrity="sha384-IAEKjDeCK3/9HPhmjC1YvDDk9EbeC1lVeUjvYs7Md/CFdLy4LwZms9CdSW/O6Fnn" crossorigin="anonymous"></script>
+  <!-- FullCalendar Premium (vue jour en colonnes) : licence AGPLv3, voir le fichier LICENSE -->
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar-scheduler@7.1.5/all/global.js"
+          integrity="sha384-Xjohh1vs7Vn/fHtQ6X3VGzAR5B955wOPZXwD8QQnUD1EAxPrenPEjkXgkwUR67Cr" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@7.1.5/themes/classic/global.js"
           integrity="sha384-aI9hlRxtPVjNaA6t2yaWlOugfU/NG08pEzMRAHoz0B8Y83dGcynbqRp1Baw8YIiR" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@7.1.5/locales/fr/global.js"
           integrity="sha384-IoWWTl5788WGfhuiVj3pVNcO+keGpOmkklBgW51lS80OOxTWpCP3Y0rpwD5nuubf" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/rrule@7.1.5/global.js"
           integrity="sha384-qDlTn7aedGX/dP8oNjTvOY1u7rSJMmGFc1UylHS9Zed/AUc77adbybZF4jzd1L/6" crossorigin="anonymous"></script>
-  <script src="app.js?v=2026-11-13-3f"></script>
+  <script src="app.js?v=2026-11-13-3f2"></script>
 </body>
 </html>

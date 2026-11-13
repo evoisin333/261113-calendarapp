@@ -15,9 +15,15 @@ C'est une appli web installable (PWA), hébergée sur GitHub Pages, avec les don
 
 - supabase-js 2.119.0
 - FullCalendar 7.1.5 (+ thème classic, langue fr, extension rrule 7.1.5)
+- FullCalendar Scheduler 7.1.5 (Premium, pour la vue jour en colonnes) : utilisé sous licence AGPLv3
 - rrule 2.8.1
 
 Pour changer de version : changer le numéro **et** l'empreinte dans `index.html`, puis relancer `test/recurrence.html` sur les deux téléphones.
+
+## ⚖️ Licence
+
+- Le projet est sous licence **GNU AGPLv3** (fichier `LICENSE`). C'est la condition pour utiliser gratuitement FullCalendar Premium (vue jour avec une colonne par calendrier), avec la clé `AGPL-My-Frontend-And-Backend-Are-Open-Source` dans `app.js`.
+- Usage perso, non commercial. Si l'appli devenait commerciale, il faudrait une licence payante FullCalendar.
 
 ## 🛠️ Réglages faits à la main
 
@@ -48,8 +54,12 @@ Pour changer de version : changer le numéro **et** l'empreinte dans `index.html
 
 ## 👆 Utilisation
 
+- Changer de jour, de semaine ou de mois : **glisser le doigt** vers la gauche ou la droite (ou les flèches ‹ ›).
+- Vue jour : une colonne par calendrier. Glisser un événement dans une autre colonne change son calendrier.
+- Vue mois : écarter deux doigts pour voir titres et heures (ou « Mois détaillé » dans le menu).
 - Créer : **appui long** sur une heure (glisser pour allonger), ou le bouton **+**.
 - Modifier : **appui court** sur un événement.
 - Déplacer : **appui long** sur un événement puis glisser ; tirer le bord du bas pour la durée. Les événements récurrents ne se déplacent pas en glissant (passer par le formulaire).
 - Une seule date d'une série : la toucher, puis « Supprimer cette date » ou « Détacher cette date ».
 - Rechercher : la loupe 🔍 (titre, lieu, notes ; sans accents ni majuscules).
+- Masquer un calendrier, se déconnecter : le menu (icône à gauche de la loupe).
