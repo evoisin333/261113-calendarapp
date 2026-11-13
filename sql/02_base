@@ -1,0 +1,180 @@
+-- 02_base.sql
+-- Étape 2 : la base de l'appli (membres, calendriers, événements).
+-- Rejouable sans erreur. À lancer dans Supabase → SQL Editor.
+-- Prérequis (README) : « Automatically expose new tables » désactivé.
+
+-- 0) Nettoyage de l'étape 1
+drop table if exists public.test_synchro;
+
+
+-- 1) Schéma privé : fonctions internes, invisibles depuis l'API
+create schema if not exists prive;
+revoke all on schema prive from public;
+grant usage on schema prive to authenticated;
+
+
+-- 2) Les membres (vous deux). Remplie par 03_membres.sql
+create table if not exists public.membres (
+  user_id  uuid primary key references auth.users (id) on delete cascade,
+  prenom   text not null
+);
+
+-- « Est-ce que la personne connectée est membre ? »
+-- security definer : la fonction lit la table membres avec les droits de son créateur,
+-- sinon la règle RLS de membres s'appellerait elle-même en boucle.
+create or replace function prive.est_membre()
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1 from public.membres where user_id = (select auth.uid())
+  );
+$$;
+revoke all on function prive.est_membre() from public;
+grant execute on function prive.est_membre() to authenticated;
+
+
+-- 3) Les 3 calendriers (fixes)
+create table if not exists public.calendriers (
+  id       smallint primary key,
+  nom      text not null unique,
+  couleur  text not null check (couleur ~ '^#[0-9A-Fa-f]{6}$')
+);
+
+insert into public.calendriers (id, nom, couleur) values
+  (1, 'Emma',   '#F4B6C2'),  -- rose pastel
+  (2, 'Mattia', '#B5DFC0'),  -- vert pastel
+  (3, 'Nous',   '#B3D4F2')   -- bleu pastel
+on conflict (id) do update set nom = excluded.nom, couleur = excluded.couleur;
+
+
+-- 4) Les événements
+create table if not exists public.evenements (
+  id               bigint generated always as identity primary key,
+  calendrier_id    smallint not null references public.calendriers (id),
+  titre            text not null check (char_length(titre) between 1 and 200),
+  lieu             text check (char_length(lieu) <= 200),
+  notes            text check (char_length(notes) <= 2000),
+
+  journee_entiere  boolean not null default false,
+  -- Événement à heure fixe : instants en UTC (peut passer minuit)
+  debut            timestamptz,
+  fin              timestamptz,
+  -- Journée entière : dates sans heure, fin EXCLUSIVE (14→15 inclus = date_fin 16)
+  date_debut       date,
+  date_fin         date,
+
+  -- Récurrence au format iCalendar, sans DTSTART (le début vient de debut / date_debut)
+  -- ex. 'FREQ=WEEKLY;BYDAY=TU' ou 'FREQ=MONTHLY;COUNT=6'
+  regle_recurrence text check (
+    regle_recurrence ~ '^FREQ=(DAILY|WEEKLY|MONTHLY|YEARLY)(;[A-Z]+=[A-Za-z0-9,+-]+)*$'
+  ),
+  -- Occurrences supprimées : dates LOCALES (Bruxelles) des occurrences retirées
+  dates_supprimees date[] not null default '{}',
+
+  cree_par         uuid default auth.uid() references auth.users (id) on delete set null,
+  cree_le          timestamptz not null default now(),
+  modifie_le       timestamptz not null default now(),
+
+  -- Soit heure fixe, soit journée entière, jamais un mélange des deux
+  constraint dates_coherentes check (
+    (journee_entiere
+       and date_debut is not null and date_fin > date_debut
+       and debut is null and fin is null)
+    or
+    (not journee_entiere
+       and debut is not null and fin > debut
+       and date_debut is null and date_fin is null)
+  )
+);
+
+create index if not exists evenements_calendrier_idx on public.evenements (calendrier_id);
+
+-- modifie_le mis à jour automatiquement à chaque modification
+create or replace function prive.maj_modifie_le()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  new.modifie_le := now();
+  return new;
+end;
+$$;
+
+drop trigger if exists evenements_modifie_le on public.evenements;
+create trigger evenements_modifie_le
+  before update on public.evenements
+  for each row execute function prive.maj_modifie_le();
+
+
+-- 5) Sécurité : RLS sur chaque table, accès réservé aux membres
+alter table public.membres     enable row level security;
+alter table public.calendriers enable row level security;
+alter table public.evenements  enable row level security;
+
+drop policy if exists "membres : lecture" on public.membres;
+create policy "membres : lecture" on public.membres
+  for select to authenticated
+  using ((select prive.est_membre()));
+
+drop policy if exists "calendriers : lecture" on public.calendriers;
+create policy "calendriers : lecture" on public.calendriers
+  for select to authenticated
+  using ((select prive.est_membre()));
+
+drop policy if exists "evenements : tout pour les membres" on public.evenements;
+create policy "evenements : tout pour les membres" on public.evenements
+  for all to authenticated
+  using ((select prive.est_membre()))
+  with check ((select prive.est_membre()));
+
+
+-- 6) Droits d'accès par l'API (on repart de zéro, puis le strict nécessaire)
+revoke all on public.membres, public.calendriers, public.evenements from anon, authenticated;
+
+grant select on public.membres, public.calendriers to authenticated;
+grant select, delete on public.evenements to authenticated;
+-- Écriture colonne par colonne : cree_par, cree_le et modifie_le ne sont jamais
+-- modifiables depuis l'appli
+grant insert (calendrier_id, titre, lieu, notes, journee_entiere, debut, fin,
+              date_debut, date_fin, regle_recurrence, dates_supprimees),
+      update (calendrier_id, titre, lieu, notes, journee_entiere, debut, fin,
+              date_debut, date_fin, regle_recurrence, dates_supprimees)
+  on public.evenements to authenticated;
+
+
+-- 7) Temps réel sur les événements (seulement si pas déjà fait)
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'evenements'
+  ) then
+    alter publication supabase_realtime add table public.evenements;
+  end if;
+end $$;
+
+
+-- 8) Vérification (seul résultat affiché dans le SQL Editor)
+-- Attendu : 3 | true | 3 | false | false | true | true
+select
+  (select count(*) from public.calendriers) as nb_calendriers,
+  (select bool_and(relrowsecurity) from pg_class
+     where oid in ('public.membres'::regclass, 'public.calendriers'::regclass,
+                   'public.evenements'::regclass)) as rls_partout,
+  (select count(*) from pg_policies
+     where schemaname = 'public'
+       and tablename in ('membres', 'calendriers', 'evenements')) as nb_regles,
+  has_table_privilege('anon', 'public.evenements', 'select') as anon_voit_evenements,
+  has_column_privilege('authenticated', 'public.evenements', 'cree_par', 'update') as cree_par_modifiable,
+  exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'evenements'
+  ) as temps_reel,
+  to_regclass('public.test_synchro') is null as test_synchro_supprimee;
