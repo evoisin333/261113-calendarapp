@@ -53,3 +53,19 @@ Pour chaque choix : la raison, l'alternative écartée et la limite que ça indu
 - **Marque 🔁 dans le coin des événements récurrents.**
 - **Recherche dans le téléphone** (titre, lieu, notes ; sans accents ni majuscules ; une ligne par série avec sa prochaine date). Raison : instantané, rien côté Supabase, marchera hors connexion.
 - **Mode diagnostic `?debug`** gardé jusqu'aux tests finaux. Il a permis de régler l'appui long sur iPhone.
+
+## Étape 3 : l'appli, apparence (13/11/2026) ✅
+
+- **Style « C » choisi sur maquettes** : fond gris, blocs pastel pleins avec texte foncé, bande de la semaine en carte, grand titre du mois, boutons en pilules (« + » et recherche en haut). Clair/sombre suit le téléphone.
+- **Vue jour en colonnes Emma | Mattia** (comme Cupla), avec la vue « ressources » de FullCalendar Premium. Raison : on voit d'un coup qui fait quoi. Alternative écartée : une seule colonne avec les couleurs. Limite : FullCalendar Premium est gratuit seulement si le projet est open source sous licence **AGPLv3** → fichier `LICENSE` dans le dépôt, et le code doit rester public.
+- **Pas de colonne « Nous » : un événement Nous s'étale en bleu sur les deux colonnes, en un seul bloc.** Raison : plus lisible. Limite : si un événement Nous chevauche un autre événement, il reste affiché en deux morceaux (un par colonne).
+- **Glisser un événement d'une colonne à l'autre change son calendrier** (Emma ↔ Mattia). Un événement Nous garde son calendrier.
+- **Glisser le doigt à gauche/droite pour changer de jour, semaine ou mois.** Limite : dans Safari (pas l'appli installée), glisser depuis le bord gauche fait « page précédente ».
+- **Vue mois : pincer/écarter pour passer en mois détaillé** (titres visibles), réglage aussi dans le menu.
+- **Rebond et « retour arrière » du navigateur bloqués** (`overscroll-behavior: none`).
+- **Numéro de version `?v=` sur les fichiers dans `index.html`.** Raison : sans ça, les téléphones gardaient l'ancien `style.css` ou `app.js` en mémoire et l'appli s'affichait cassée. Limite : il faut changer ce numéro à chaque mise à jour.
+
+## Idées pour la v2 💡
+
+- **Voir nos événements dans le Calendrier Apple** : un lien d'abonnement `.ics` secret, fabriqué par une Edge Function Supabase (gratuit). Limite : sens unique (lecture seule dans Apple), mise à jour avec du retard, et quiconque a le lien voit les événements.
+- **Widget** : impossible pour une appli web (ni iPhone ni Android) ; avec l'abonnement `.ics`, le widget du Calendrier Apple afficherait nos événements. Alternative écartée : appli native (compte développeur Apple payant).
