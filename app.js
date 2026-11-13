@@ -940,8 +940,16 @@ function creerResultat(ligne, debut) {
 document.getElementById("bouton-recherche").addEventListener("click", () => {
   champRecherche.value = "";
   afficherResultats();
+  // Ici le clavier est voulu. Mais iPhone ne l'ouvre que si un champ VISIBLE reçoit le focus
+  // pendant le toucher lui-même. Astuce : un champ invisible prend le focus tout de suite
+  // (le clavier s'ouvre), puis on passe le focus au vrai champ une fois la fenêtre affichée.
+  const leurre = document.createElement("input");
+  leurre.style.cssText = "position:fixed; top:0; left:0; width:1px; height:1px; opacity:0; font-size:16px;";
+  document.body.append(leurre);
+  leurre.focus();
   fenetreRecherche.showModal();
-  champRecherche.focus();   // ici le clavier est voulu : on ouvre la recherche pour taper
+  champRecherche.focus();
+  leurre.remove();
 });
 document.getElementById("bouton-fermer-recherche").addEventListener("click", () => fenetreRecherche.close());
 champRecherche.addEventListener("input", afficherResultats);
