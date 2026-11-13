@@ -116,7 +116,9 @@ input, button { font-size: 16px; font-family: inherit; }
 .ligne-case { display: flex; align-items: center; gap: 8px; }
 .ligne-case input { width: 20px; height: 20px; }
 
-.ligne-date { display: grid; grid-template-columns: 50px 1fr auto; align-items: center; gap: 8px; }
+.ligne-date { display: grid; grid-template-columns: 50px minmax(0, 1fr) auto; align-items: center; gap: 8px; }
+/* Sur iPhone, le champ date a une largeur minimale qui le faisait déborder sur la roue */
+.ligne-date input[type="date"] { min-width: 0; }
 
 /* Roue horaire : heures et minutes, on fait défiler, la valeur du milieu est choisie */
 .roue-heure {
