@@ -2,6 +2,7 @@
 // 3a : connexion, affichage (jour / semaine / mois), filtres, temps réel.
 // 3b : formulaire (créer, modifier, supprimer), roue horaire.
 // 3c : récurrences (répétition, supprimer ou détacher une seule date).
+// 3d : recherche (titre, lieu, notes ; sans accents ni majuscules).
 // 3e : glisser-déposer (déplacer, changer la durée).
 
 const FUSEAU = "Europe/Brussels";
@@ -846,3 +847,101 @@ boutonDetacher.addEventListener("click", async () => {
   ouvrirFormulaire(nouvelle);
   afficherMessage("✂️ Date détachée : c'est maintenant un événement à part.");
 });
+
+
+// ---------- Recherche ----------
+
+const fenetreRecherche = document.getElementById("fenetre-recherche");
+const champRecherche = document.getElementById("champ-recherche");
+const zoneResultats = document.getElementById("resultats-recherche");
+const NOMS_REPETITION = { DAILY: "chaque jour", WEEKLY: "chaque semaine", MONTHLY: "chaque mois", YEARLY: "chaque année" };
+
+// "Réveillon de Noël" -> "reveillon de noel" (sans accents ni majuscules)
+function normaliser(texte) {
+  return (texte ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
+// Date « flottante » : les chiffres UTC de l'objet Date = l'heure de Bruxelles (c'est ce qu'utilise rrule)
+function flottante(texteLocal) { return new Date(Date.parse(texteLocal + "Z")); }
+function texteLocal(dateFlottante) { return dateFlottante.toISOString().slice(0, 19); }
+
+// Date de référence d'un événement pour la recherche : prochaine occurrence, sinon la dernière passée
+// Renvoie { debut: "2026-11-17T09:00:00", aVenir: true/false }
+function dateReperes(ligne) {
+  const maintenant = heureBruxelles(Date.now());
+  const debutLocal = ligne.journee_entiere ? `${ligne.date_debut}T00:00:00` : heureBruxelles(ligne.debut);
+  const finLocale = ligne.journee_entiere ? `${ligne.date_fin}T00:00:00` : heureBruxelles(ligne.fin);
+
+  if (!ligne.regle_recurrence) return { debut: debutLocal, aVenir: finLocale > maintenant };
+
+  // Série : on rejoue la règle en heure de Bruxelles, sans les dates supprimées
+  const depart = ligne.journee_entiere ? ligne.date_debut.replaceAll("-", "") : debutLocal.replace(/[-:]/g, "");
+  const serie = rrule.rrulestr(`DTSTART:${depart}\nRRULE:${ligne.regle_recurrence}`, { forceset: true });
+  for (const date of ligne.dates_supprimees) serie.exdate(flottante(`${date}T${debutLocal.slice(11)}`));
+  // une occurrence en cours compte comme « à venir »
+  const duree = flottante(finLocale) - flottante(debutLocal);
+  const prochaine = serie.after(new Date(flottante(maintenant) - duree), false);
+  if (prochaine) return { debut: texteLocal(prochaine), aVenir: true };
+  const derniere = serie.before(flottante(maintenant), true);
+  return { debut: derniere ? texteLocal(derniere) : debutLocal, aVenir: false };
+}
+
+function dateLisible(texte, journeeEntiere) {
+  const jour = new Intl.DateTimeFormat("fr-BE", { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "UTC" })
+    .format(flottante(texte));
+  return journeeEntiere ? `${jour} · journée` : `${jour} · ${texte.slice(11, 16)}`;
+}
+
+function afficherResultats() {
+  const recherche = normaliser(champRecherche.value.trim());
+  zoneResultats.innerHTML = "";
+  if (!recherche) {
+    zoneResultats.append(Object.assign(document.createElement("p"), { className: "vide", textContent: "Tape un mot du titre, du lieu ou des notes." }));
+    return;
+  }
+  const trouves = lignesEvenements
+    .filter((l) => normaliser(`${l.titre} ${l.lieu ?? ""} ${l.notes ?? ""}`).includes(recherche))
+    .map((ligne) => ({ ligne, ...dateReperes(ligne) }));
+  const aVenir = trouves.filter((r) => r.aVenir).sort((a, b) => a.debut.localeCompare(b.debut));
+  const passes = trouves.filter((r) => !r.aVenir).sort((a, b) => b.debut.localeCompare(a.debut));
+
+  if (trouves.length === 0) {
+    zoneResultats.append(Object.assign(document.createElement("p"), { className: "vide", textContent: "Aucun résultat." }));
+    return;
+  }
+  for (const [titre, liste] of [["À venir", aVenir], ["Passés", passes]]) {
+    if (liste.length === 0) continue;
+    zoneResultats.append(Object.assign(document.createElement("h3"), { textContent: titre }));
+    for (const { ligne, debut } of liste) zoneResultats.append(creerResultat(ligne, debut));
+  }
+}
+
+function creerResultat(ligne, debut) {
+  const bouton = Object.assign(document.createElement("button"), { type: "button", className: "resultat" });
+  const pastille = Object.assign(document.createElement("span"), { className: "pastille" });
+  pastille.style.background = calendriers.find((c) => c.id === ligne.calendrier_id)?.couleur ?? "#999";
+  const texte = document.createElement("span");
+  const details = [dateLisible(debut, ligne.journee_entiere)];
+  const frequence = ligne.regle_recurrence?.match(/FREQ=(\w+)/)?.[1];
+  if (frequence) details.push(`🔁 ${NOMS_REPETITION[frequence]}`);
+  if (ligne.lieu) details.push(ligne.lieu);
+  texte.append(ligne.titre,
+    Object.assign(document.createElement("span"), { className: "details", textContent: details.join(" · ") }));
+  bouton.append(pastille, texte);
+  // Toucher un résultat : on va à ce jour, en vue jour, à l'heure de l'événement
+  bouton.addEventListener("click", () => {
+    fenetreRecherche.close();
+    calendrier.changeView("timeGridDay", debut.slice(0, 10));
+    if (!ligne.journee_entiere) calendrier.scrollToTime(`${String(Math.max(Number(debut.slice(11, 13)) - 1, 0)).padStart(2, "0")}:00:00`);
+  });
+  return bouton;
+}
+
+document.getElementById("bouton-recherche").addEventListener("click", () => {
+  champRecherche.value = "";
+  afficherResultats();
+  fenetreRecherche.showModal();
+  champRecherche.focus();   // ici le clavier est voulu : on ouvre la recherche pour taper
+});
+document.getElementById("bouton-fermer-recherche").addEventListener("click", () => fenetreRecherche.close());
+champRecherche.addEventListener("input", afficherResultats);

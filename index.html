@@ -36,6 +36,7 @@
   <main id="ecran-appli" hidden>
     <header class="barre">
       <div id="filtres"></div>
+      <button id="bouton-recherche" class="discret loupe" aria-label="Rechercher">🔍</button>
       <span id="etat-synchro" title="Synchronisation">●</span>
       <button id="bouton-deconnexion" class="discret">Déconnexion</button>
     </header>
@@ -44,6 +45,16 @@
     <button id="bouton-ajouter" aria-label="Nouvel événement">+</button>
     <p id="message" role="status" hidden></p>
   </main>
+
+  <!-- Recherche -->
+  <dialog id="fenetre-recherche">
+    <div class="entete-recherche">
+      <input type="search" id="champ-recherche" placeholder="Rechercher (titre, lieu, notes)"
+             autocomplete="off" enterkeyhint="search">
+      <button type="button" id="bouton-fermer-recherche" class="discret">Fermer</button>
+    </div>
+    <div id="resultats-recherche"></div>
+  </dialog>
 
   <!-- Formulaire d'un événement (création ou modification) -->
   <dialog id="fenetre-evenement">
