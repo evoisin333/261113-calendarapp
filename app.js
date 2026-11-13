@@ -1,5 +1,6 @@
 // app.js — Calendrier partagé
-// Étape 3a : connexion, affichage (jour / semaine / mois), filtres, temps réel.
+// 3a : connexion, affichage (jour / semaine / mois), filtres, temps réel.
+// 3b : formulaire (créer, modifier, supprimer), roue horaire.
 
 const FUSEAU = "Europe/Brussels";
 const client = supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseCle);
@@ -11,6 +12,8 @@ const erreurAppli = document.getElementById("erreur-appli");
 const etatSynchro = document.getElementById("etat-synchro");
 
 let appliDemarree = false;
+let utilisateurId = null;     // identifiant de la personne connectée
+let calendrierParDefaut = 3;  // son calendrier (sinon « Nous »)
 let calendrier = null;        // l'objet FullCalendar
 let calendriers = [];         // lignes de la table calendriers
 let lignesEvenements = [];    // lignes de la table evenements
@@ -91,6 +94,27 @@ function versFullCalendar(ligne) {
   return evenement;
 }
 
+// Heure de Bruxelles -> instant UTC. Ex. ("2027-03-02", "09:00") -> "2027-03-02T08:00:00.000Z"
+// On part de « 9h00 UTC », on regarde l'heure affichée à Bruxelles à cet instant,
+// et on corrige de l'écart. Deux passes pour tomber juste les jours de changement d'heure.
+function versUtc(date, heure) {
+  const [annee, mois, jour] = date.split("-").map(Number);
+  const [h, min] = heure.split(":").map(Number);
+  const cible = Date.UTC(annee, mois - 1, jour, h, min);
+  let instant = cible;
+  for (let passe = 0; passe < 2; passe++) {
+    const afficheABruxelles = Date.parse(heureBruxelles(instant) + "Z");
+    instant -= afficheABruxelles - cible;
+  }
+  return new Date(instant).toISOString();
+}
+
+// "2027-03-14" + 1 jour -> "2027-03-15"
+function ajouterJours(date, jours) {
+  const [annee, mois, jour] = date.split("-").map(Number);
+  return new Date(Date.UTC(annee, mois - 1, jour + jours)).toISOString().slice(0, 10);
+}
+
 // Les événements à afficher (sans les calendriers masqués)
 function evenementsAffiches() {
   return lignesEvenements
@@ -135,6 +159,7 @@ document.getElementById("bouton-deconnexion").addEventListener("click", () => {
 // Appelé au lancement (session gardée ou non), à la connexion et à la déconnexion.
 // setTimeout : la doc Supabase déconseille d'appeler Supabase directement dans ce rappel.
 client.auth.onAuthStateChange((_evenement, session) => {
+  utilisateurId = session?.user?.id ?? null;
   setTimeout(() => {
     if (session && !appliDemarree) demarrerAppli();
     if (!session) afficherConnexion();
@@ -163,6 +188,11 @@ async function demarrerAppli() {
     erreurAppli.textContent = "Ce compte n'a accès à aucun calendrier.";
   }
 
+  // Calendrier proposé par défaut : celui qui porte le prénom de la personne connectée
+  const { data: moi } = await client.from("membres").select("prenom").eq("user_id", utilisateurId);
+  calendrierParDefaut = calendriers.find((c) => c.nom === moi?.[0]?.prenom)?.id ?? 3;
+
+  document.getElementById("bouton-ajouter").hidden = calendriers.length === 0;
   afficherFiltres();
   creerCalendrier();
   await chargerEvenements();
@@ -199,6 +229,17 @@ function creerCalendrier() {
     dayMaxEvents: true,                              // vue mois : "+2" si trop d'événements
     events: (_periode, succes) => succes(evenementsAffiches()),
     datesSet: (info) => ecrireReglage("vue", info.view.type),
+    // Appui sur une case vide : nouvel événement à cette heure (ou ce jour en vue mois)
+    dateClick: (info) => {
+      const local = heureBruxelles(info.date);
+      ouvrirFormulaire(null, { date: local.slice(0, 10), heure: local.slice(11, 16),
+                               journeeEntiere: info.allDay });
+    },
+    // Appui sur un événement : on l'ouvre pour le modifier
+    eventClick: (info) => {
+      const ligne = lignesEvenements.find((l) => String(l.id) === info.event.id);
+      if (ligne) ouvrirFormulaire(ligne);
+    },
   });
   calendrier.render();
 }
@@ -258,4 +299,225 @@ function ecouterTempsReel() {
 // Retour sur l'appli (le téléphone la met en pause en arrière-plan) : on recharge
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible" && appliDemarree) chargerEvenements();
+});
+
+
+// ---------- Roue horaire (heures + minutes par pas de 5) ----------
+
+const HAUTEUR_LIGNE = 32;   // doit correspondre à .roue div dans style.css
+const HEURES = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
+const MINUTES = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, "0"));
+
+// Construit une colonne qui défile ; à l'arrêt, appelle quandChange
+function creerColonne(valeurs, quandChange) {
+  const colonne = document.createElement("div");
+  colonne.className = "roue";
+  colonne.append(Object.assign(document.createElement("div"), { className: "espace" }));
+  for (const valeur of valeurs) {
+    colonne.append(Object.assign(document.createElement("div"), { textContent: valeur }));
+  }
+  colonne.append(Object.assign(document.createElement("div"), { className: "espace" }));
+  let minuteur;
+  colonne.addEventListener("scroll", () => {
+    clearTimeout(minuteur);
+    minuteur = setTimeout(quandChange, 150);   // attend la fin du défilement
+  });
+  colonne.valeurs = valeurs;
+  return colonne;
+}
+
+function lireColonne(colonne) {
+  const index = Math.round(colonne.scrollTop / HAUTEUR_LIGNE);
+  return colonne.valeurs[Math.min(Math.max(index, 0), colonne.valeurs.length - 1)];
+}
+
+function reglerColonne(colonne, valeur) {
+  colonne.scrollTop = Math.max(colonne.valeurs.indexOf(valeur), 0) * HAUTEUR_LIGNE;
+}
+
+function creerRoue(conteneur, quandChange) {
+  const heures = creerColonne(HEURES, quandChange);
+  const minutes = creerColonne(MINUTES, quandChange);
+  conteneur.append(heures, minutes);
+  return {
+    lire: () => `${lireColonne(heures)}:${lireColonne(minutes)}`,
+    regler: (heure) => {   // "09:07" -> roue sur 09:05 (minutes arrondies à 5)
+      const [h, m] = heure.split(":").map(Number);
+      const arrondi = Math.min(Math.round(m / 5) * 5, 55);
+      reglerColonne(heures, String(h).padStart(2, "0"));
+      reglerColonne(minutes, String(arrondi).padStart(2, "0"));
+    },
+  };
+}
+
+
+// ---------- Formulaire d'un événement ----------
+
+const fenetre = document.getElementById("fenetre-evenement");
+const champTitre = document.getElementById("champ-titre");
+const champJournee = document.getElementById("champ-journee");
+const champDateDebut = document.getElementById("champ-date-debut");
+const champDateFin = document.getElementById("champ-date-fin");
+const champLieu = document.getElementById("champ-lieu");
+const champNotes = document.getElementById("champ-notes");
+const erreurFormulaire = document.getElementById("erreur-formulaire");
+const boutonSupprimer = document.getElementById("bouton-supprimer");
+const boutonEnregistrer = document.getElementById("bouton-enregistrer");
+
+const roueDebut = creerRoue(document.getElementById("roue-debut"), corrigerFin);
+const roueFin = creerRoue(document.getElementById("roue-fin"), () => {});
+
+let ligneEnCours = null;   // null = création, sinon la ligne modifiée
+
+// Si la fin passe avant le début, on la recale (1 h après, ou même jour)
+function corrigerFin() {
+  if (champJournee.checked) {
+    if (champDateFin.value < champDateDebut.value) champDateFin.value = champDateDebut.value;
+    return;
+  }
+  const debut = `${champDateDebut.value}T${roueDebut.lire()}`;
+  const fin = `${champDateFin.value}T${roueFin.lire()}`;
+  if (fin <= debut) {
+    const uneHeurePlusTard = heureBruxelles(Date.parse(versUtc(champDateDebut.value, roueDebut.lire())) + 3600000);
+    champDateFin.value = uneHeurePlusTard.slice(0, 10);
+    roueFin.regler(uneHeurePlusTard.slice(11, 16));
+  }
+}
+champDateDebut.addEventListener("change", corrigerFin);
+
+champJournee.addEventListener("change", () => {
+  fenetre.classList.toggle("journee-entiere", champJournee.checked);
+});
+
+// Pastilles de choix du calendrier
+function afficherChoixCalendrier(idChoisi) {
+  const zone = document.getElementById("choix-calendrier");
+  zone.innerHTML = "";
+  for (const cal of calendriers) {
+    const label = document.createElement("label");
+    label.style.setProperty("--couleur", cal.couleur);
+    const radio = Object.assign(document.createElement("input"),
+      { type: "radio", name: "calendrier", value: cal.id, checked: cal.id === idChoisi });
+    label.append(radio, cal.nom);
+    zone.append(label);
+  }
+}
+
+// ligne = événement existant, ou null pour en créer un (avec depart = { date, heure, journeeEntiere })
+function ouvrirFormulaire(ligne, depart = null) {
+  if (calendriers.length === 0) return;
+  ligneEnCours = ligne;
+  erreurFormulaire.textContent = "";
+  boutonSupprimer.hidden = !ligne;
+  boutonSupprimer.classList.remove("confirmer");
+  boutonSupprimer.textContent = "Supprimer";
+  document.getElementById("titre-fenetre").textContent = ligne ? "Modifier" : "Nouvel événement";
+  document.getElementById("note-serie").hidden = !ligne?.regle_recurrence;
+
+  let dateDebut, heureDebut, dateFin, heureFin, journeeEntiere;
+  if (ligne && ligne.journee_entiere) {
+    journeeEntiere = true;
+    dateDebut = ligne.date_debut;
+    dateFin = ajouterJours(ligne.date_fin, -1);       // fin exclusive en base, inclusive à l'écran
+    heureDebut = "09:00"; heureFin = "10:00";
+  } else if (ligne) {
+    journeeEntiere = false;
+    const debutLocal = heureBruxelles(ligne.debut);
+    const finLocale = heureBruxelles(ligne.fin);
+    [dateDebut, heureDebut] = [debutLocal.slice(0, 10), debutLocal.slice(11, 16)];
+    [dateFin, heureFin] = [finLocale.slice(0, 10), finLocale.slice(11, 16)];
+  } else {
+    journeeEntiere = depart.journeeEntiere;
+    dateDebut = dateFin = depart.date;
+    heureDebut = journeeEntiere ? "09:00" : depart.heure;
+    const finLocale = heureBruxelles(Date.parse(versUtc(dateDebut, heureDebut)) + 3600000);
+    dateFin = journeeEntiere ? dateDebut : finLocale.slice(0, 10);
+    heureFin = finLocale.slice(11, 16);
+  }
+
+  champTitre.value = ligne?.titre ?? "";
+  champLieu.value = ligne?.lieu ?? "";
+  champNotes.value = ligne?.notes ?? "";
+  champJournee.checked = journeeEntiere;
+  fenetre.classList.toggle("journee-entiere", journeeEntiere);
+  champDateDebut.value = dateDebut;
+  champDateFin.value = dateFin;
+  afficherChoixCalendrier(ligne?.calendrier_id ?? calendrierParDefaut);
+
+  fenetre.showModal();
+  // Les roues ne peuvent être positionnées qu'une fois la fenêtre affichée
+  roueDebut.regler(heureDebut);
+  roueFin.regler(heureFin);
+  if (!ligne) champTitre.focus();
+}
+
+// Bouton « + » : prochaine heure pleine, aujourd'hui
+document.getElementById("bouton-ajouter").addEventListener("click", () => {
+  const dansUneHeure = heureBruxelles(Date.now() + 3600000);
+  ouvrirFormulaire(null, { date: dansUneHeure.slice(0, 10),
+                           heure: `${dansUneHeure.slice(11, 13)}:00`, journeeEntiere: false });
+});
+
+document.getElementById("bouton-annuler").addEventListener("click", () => fenetre.close());
+
+// Ce que le formulaire va écrire dans la base (ou un message d'erreur)
+function lireFormulaire() {
+  const titre = champTitre.value.trim();
+  if (!titre) return { erreur: "Il faut un titre." };
+  if (!champDateDebut.value || !champDateFin.value) return { erreur: "Il faut une date de début et de fin." };
+
+  const donnees = {
+    titre,
+    lieu: champLieu.value.trim() || null,
+    notes: champNotes.value.trim() || null,
+    calendrier_id: Number(document.querySelector('input[name="calendrier"]:checked').value),
+    journee_entiere: champJournee.checked,
+    debut: null, fin: null, date_debut: null, date_fin: null,
+  };
+  if (champJournee.checked) {
+    if (champDateFin.value < champDateDebut.value) return { erreur: "La fin est avant le début." };
+    donnees.date_debut = champDateDebut.value;
+    donnees.date_fin = ajouterJours(champDateFin.value, 1);   // fin exclusive en base
+  } else {
+    donnees.debut = versUtc(champDateDebut.value, roueDebut.lire());
+    donnees.fin = versUtc(champDateFin.value, roueFin.lire());
+    if (donnees.fin <= donnees.debut) return { erreur: "La fin doit être après le début." };
+  }
+  return { donnees };
+}
+
+boutonEnregistrer.addEventListener("click", async () => {
+  const { donnees, erreur } = lireFormulaire();
+  if (erreur) { erreurFormulaire.textContent = erreur; return; }
+
+  boutonEnregistrer.disabled = true;
+  const requete = ligneEnCours
+    ? client.from("evenements").update(donnees).eq("id", ligneEnCours.id)
+    : client.from("evenements").insert(donnees);
+  const { error } = await requete;
+  boutonEnregistrer.disabled = false;
+
+  if (error) { erreurFormulaire.textContent = `Enregistrement impossible : ${error.message}`; return; }
+  fenetre.close();
+  chargerEvenements();   // sans attendre le temps réel
+});
+
+// Suppression en deux appuis : « Supprimer » puis « Confirmer la suppression »
+boutonSupprimer.addEventListener("click", async () => {
+  if (!boutonSupprimer.classList.contains("confirmer")) {
+    boutonSupprimer.classList.add("confirmer");
+    boutonSupprimer.textContent = ligneEnCours.regle_recurrence
+      ? "Confirmer (toute la série)" : "Confirmer la suppression";
+    return;
+  }
+  const { error } = await client.from("evenements").delete().eq("id", ligneEnCours.id);
+  if (error) { erreurFormulaire.textContent = `Suppression impossible : ${error.message}`; return; }
+  fenetre.close();
+  chargerEvenements();
+});
+
+// Touche Entrée dans un champ : on enregistre au lieu de fermer la fenêtre
+document.getElementById("formulaire-evenement").addEventListener("submit", (evenement) => {
+  evenement.preventDefault();
+  boutonEnregistrer.click();
 });

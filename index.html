@@ -41,7 +41,46 @@
     </header>
     <p id="erreur-appli" class="erreur"></p>
     <div id="calendrier"></div>
+    <button id="bouton-ajouter" aria-label="Nouvel événement">+</button>
   </main>
+
+  <!-- Formulaire d'un événement (création ou modification) -->
+  <dialog id="fenetre-evenement">
+    <form id="formulaire-evenement" method="dialog">
+      <h2 id="titre-fenetre">Nouvel événement</h2>
+      <p id="note-serie" class="note" hidden>🔁 Événement récurrent : les changements s'appliquent à toute la série.</p>
+
+      <input id="champ-titre" placeholder="Titre" maxlength="200" autocomplete="off">
+
+      <div id="choix-calendrier" class="choix-calendrier"></div>
+
+      <label class="ligne-case">
+        <input type="checkbox" id="champ-journee"> Journée entière
+      </label>
+
+      <div class="ligne-date">
+        <span>Début</span>
+        <input type="date" id="champ-date-debut" required>
+        <div class="roue-heure" id="roue-debut"></div>
+      </div>
+      <div class="ligne-date">
+        <span>Fin</span>
+        <input type="date" id="champ-date-fin" required>
+        <div class="roue-heure" id="roue-fin"></div>
+      </div>
+
+      <input id="champ-lieu" placeholder="Lieu (facultatif)" maxlength="200" autocomplete="off">
+      <textarea id="champ-notes" placeholder="Notes (facultatif)" maxlength="2000" rows="3"></textarea>
+
+      <p id="erreur-formulaire" class="erreur"></p>
+
+      <div class="boutons-formulaire">
+        <button type="button" id="bouton-supprimer" class="danger">Supprimer</button>
+        <button type="button" id="bouton-annuler">Annuler</button>
+        <button type="button" id="bouton-enregistrer" class="principal">Enregistrer</button>
+      </div>
+    </form>
+  </dialog>
 
   <!-- Configuration, puis bibliothèques (versions figées + empreintes). L'ordre compte. -->
   <script src="config.js"></script>
