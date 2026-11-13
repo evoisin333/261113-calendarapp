@@ -229,20 +229,19 @@ function creerCalendrier() {
     dayMaxEvents: true,                              // vue mois : "+2" si trop d'événements
     events: (_periode, succes) => succes(evenementsAffiches()),
     datesSet: (info) => ecrireReglage("vue", info.view.type),
-    // Appui sur une case vide : nouvel événement à cette heure (ou ce jour en vue mois)
-    dateClick: (info) => {
-      const local = heureBruxelles(info.date);
-      ouvrirFormulaire(null, { date: local.slice(0, 10), heure: local.slice(11, 16),
-                               journeeEntiere: info.allDay });
-    },
-    // Appui long puis glisser : on choisit une plage, le formulaire s'ouvre au lâcher
+    // Création : appui long (puis glisser pour allonger), le formulaire s'ouvre au lâcher.
+    // Pas d'« appui court » (dateClick) : sur iPhone il se déclenche dès que le doigt se pose
+    // et empêche l'appui long. Comme dans le Calendrier de l'iPhone, toucher une case ne fait rien.
     selectable: true,
     selectMirror: true,            // la plage choisie s'affiche comme un événement, avec ses heures
     selectLongPressDelay: 400,     // durée de l'appui long sur téléphone (ms)
     select: (info) => {
       calendrier.unselect();
       const debut = heureBruxelles(info.start);
-      const fin = heureBruxelles(info.end);
+      // Appui long sans glisser = une seule case de 30 min : on propose 1 h
+      const finChoisie = info.end - info.start <= 1800000 && !info.allDay
+        ? info.start.getTime() + 3600000 : info.end;
+      const fin = heureBruxelles(finChoisie);
       ouvrirFormulaire(null, {
         date: debut.slice(0, 10), heure: debut.slice(11, 16), journeeEntiere: info.allDay,
         // journée entière : la fin de FullCalendar est exclusive, le formulaire montre le dernier jour
