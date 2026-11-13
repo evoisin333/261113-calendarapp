@@ -33,3 +33,23 @@ Pour chaque choix : la raison, l'alternative écartée et la limite que ça indu
 - **Champs d'un événement : titre (obligatoire), lieu et notes (facultatifs).** Pas de notifications en v1.
 - **Droits d'écriture colonne par colonne** : `cree_par`, `cree_le` et `modifie_le` sont remplis par la base, jamais par l'appli. Raison : impossible de falsifier qui a créé un événement.
 - **Test de sécurité dans le SQL Editor** (`04_test_securite.sql`), en se faisant passer pour chaque compte. Résultat : nous deux voyons tout, le 3e compte et un visiteur non connecté ne voient rien et ne peuvent rien écrire ✅. Le compte de test est gardé pour les tests finaux.
+
+## Étape 3 : l'appli, fonctionnalités (13/11/2026) ✅
+
+- **FullCalendar 7 plutôt que 6.** Raison : il gère le fuseau Europe/Brussels tout seul (sans extension). Alternative écartée : FullCalendar 6 + extension luxon. Limite : version récente, moins d'exemples sur internet, et un fichier lourd (~950 Ko).
+- **Récurrences calculées en heure de Bruxelles** (départ donné sans fuseau). Testé avec `test/recurrence.html` sur iPhone et Android : 9h reste 9h après le changement d'heure ✅.
+- **Pas d'outil de compilation, bibliothèques depuis jsDelivr avec versions figées et empreintes.** Raison : simple à publier depuis GitHub web. Limite : dépend de jsDelivr ; le hors connexion viendra avec la PWA (étape 4).
+- **Thème clair/sombre qui suit le téléphone.** Les calendriers masqués et la dernière vue sont gardés sur chaque téléphone.
+- **Tous les événements chargés d'un coup, par paquets de 1 000** (limite de l'API), et rechargés en entier à chaque changement en temps réel. Raison : simple et sûr à deux. Limite : avec des milliers d'événements, le chargement serait plus long.
+- **Déconnexion de ce téléphone seulement** (l'autre reste connecté).
+- **Création par appui long (+ glisser) ou bouton « + ».** Raison : sur iPhone, l'appui court se déclenchait dès que le doigt se posait et empêchait l'appui long. Limite : toucher une case vide ne fait rien (comme dans le Calendrier de l'iPhone).
+- **Roue horaire maison, identique sur les deux téléphones, par pas de 5 minutes ; date avec le sélecteur du téléphone.** Limite : une heure comme 10h07 s'affiche arrondie à 10h05.
+- **La fin suit le début en gardant la durée.**
+- **Le clavier ne s'ouvre pas tout seul dans le formulaire**, mais il s'ouvre pour la recherche (astuce nécessaire sur iPhone).
+- **Suppression en deux appuis** (« Supprimer » puis « Confirmer »).
+- **Répétition : jamais, chaque jour, chaque semaine (un ou plusieurs jours), chaque mois (même date), chaque année ; pour toujours ou jusqu'à une date incluse.** Alternative écartée : « toutes les 2 semaines », « le 2e mardi du mois ». Limite : un événement le 31 saute les mois sans 31.
+- **« Détacher cette date » ajouté en v1** (c'était la limite du cadrage) : la date est retirée de la série et devient un événement à part. Deux écritures ; si la deuxième échoue, la copie est supprimée pour éviter un doublon.
+- **Glisser-déposer par appui long**, durée en tirant le bord du bas. Les événements récurrents sont bloqués avec un message, et on ne passe pas de « journée entière » à une heure en glissant.
+- **Marque 🔁 dans le coin des événements récurrents.**
+- **Recherche dans le téléphone** (titre, lieu, notes ; sans accents ni majuscules ; une ligne par série avec sa prochaine date). Raison : instantané, rien côté Supabase, marchera hors connexion.
+- **Mode diagnostic `?debug`** gardé jusqu'aux tests finaux. Il a permis de régler l'appui long sur iPhone.

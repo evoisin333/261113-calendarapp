@@ -5,9 +5,19 @@ C'est une appli web installable (PWA), hébergée sur GitHub Pages, avec les don
 
 ## 📁 Organisation du dépôt
 
+- `index.html`, `app.js`, `style.css` : l'appli (pas d'outil de compilation, les fichiers sont publiés tels quels).
 - `config.js` : l'adresse du projet Supabase et la clé publique (publishable). **Jamais** de clé secrète ici.
 - `sql/` : tous les scripts SQL, numérotés, à lancer dans l'ordre. Chacun peut être relancé sans erreur.
+- `test/recurrence.html` : page de contrôle des récurrences et du changement d'heure (7 lignes vertes attendues).
 - `JOURNAL.md` : les décisions prises, avec leurs raisons et leurs limites.
+
+## 📚 Bibliothèques (versions figées, chargées depuis jsDelivr avec empreinte `integrity`)
+
+- supabase-js 2.119.0
+- FullCalendar 7.1.5 (+ thème classic, langue fr, extension rrule 7.1.5)
+- rrule 2.8.1
+
+Pour changer de version : changer le numéro **et** l'empreinte dans `index.html`, puis relancer `test/recurrence.html` sur les deux téléphones.
 
 ## 🛠️ Réglages faits à la main
 
@@ -32,3 +42,13 @@ C'est une appli web installable (PWA), hébergée sur GitHub Pages, avec les don
 - Dans `config.js`, l'URL doit être l'adresse de base, `https://<id>.supabase.co`, **sans** `/rest/v1` (même si la page Data API de Supabase l'affiche avec). Sinon toutes les requêtes échouent avec l'erreur PGRST125.
 - Après une modification sur GitHub, la mise en ligne prend une à deux minutes (onglet Actions), et l'ancienne version peut rester en cache quelques minutes. Pour être sûr de voir la nouvelle : Ctrl + Maj + R.
 - Le SQL Editor de Supabase ignore la RLS (il tourne en administrateur) : les tests de sécurité se font depuis l'appli, avec un compte normal.
+- Après une mise à jour sur GitHub, si un téléphone montre encore l'ancienne version : fermer l'onglet (ou l'appli) et la rouvrir.
+- Mode diagnostic : ajouter `?debug` à l'adresse affiche en bas de l'écran le journal des gestes du doigt. À retirer avant la version finale.
+
+## 👆 Utilisation
+
+- Créer : **appui long** sur une heure (glisser pour allonger), ou le bouton **+**.
+- Modifier : **appui court** sur un événement.
+- Déplacer : **appui long** sur un événement puis glisser ; tirer le bord du bas pour la durée. Les événements récurrents ne se déplacent pas en glissant (passer par le formulaire).
+- Une seule date d'une série : la toucher, puis « Supprimer cette date » ou « Détacher cette date ».
+- Rechercher : la loupe 🔍 (titre, lieu, notes ; sans accents ni majuscules).
