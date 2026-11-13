@@ -267,6 +267,7 @@ function creerCalendrier() {
     },
   });
   calendrier.render();
+  brancherDebugCalendrier();
 }
 
 // Un bouton par calendrier pour l'afficher ou le masquer
@@ -620,4 +621,44 @@ async function enregistrerDeplacement(info) {
     return;
   }
   chargerEvenements();
+}
+
+
+// ---------- Mode diagnostic : ajouter ?debug à l'adresse pour voir les gestes à l'écran ----------
+
+const modeDebug = new URLSearchParams(location.search).has("debug");
+if (modeDebug) {
+  const panneau = document.createElement("pre");
+  panneau.id = "journal-debug";
+  document.body.append(panneau);
+  const lignesJournal = [];
+  let debutGeste = 0;
+  let nbMouvements = 0;
+  let aDefile = false;
+  window.noterDebug = (texte) => {
+    lignesJournal.push(`${Math.round(performance.now() - debutGeste)}ms ${texte}`);
+    panneau.textContent = lignesJournal.slice(-16).join("\n");
+  };
+  const nomCible = (cible) => String(cible.className || cible.tagName || "?").slice(0, 22);
+  document.addEventListener("touchstart", (e) => {
+    debutGeste = performance.now(); nbMouvements = 0; aDefile = false;
+    noterDebug(`--- touchstart sur ${nomCible(e.target)}`);
+  }, { capture: true, passive: true });
+  document.addEventListener("touchmove", () => { nbMouvements++; }, { capture: true, passive: true });
+  for (const type of ["touchend", "touchcancel", "pointercancel", "contextmenu", "selectstart"]) {
+    document.addEventListener(type, (e) => noterDebug(`${type} (mouvements: ${nbMouvements})`),
+      { capture: true, passive: true });
+  }
+  document.addEventListener("scroll", () => {
+    if (!aDefile) { aDefile = true; noterDebug("la page défile"); }
+  }, { capture: true, passive: true });
+}
+
+// Rappels FullCalendar notés dans le journal
+function brancherDebugCalendrier() {
+  if (!modeDebug) return;
+  for (const nom of ["eventDragStart", "eventDragStop", "eventDrop", "eventResizeStart",
+                     "eventClick", "select", "unselect"]) {
+    calendrier.on(nom, () => noterDebug(`FullCalendar : ${nom}`));
+  }
 }

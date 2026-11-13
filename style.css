@@ -159,3 +159,11 @@ input, button { font-size: 16px; font-family: inherit; }
   margin: 0; padding: 10px 14px; border-radius: 10px; font-size: 14px;
   background: #1f2937; color: #f9fafb; box-shadow: 0 4px 12px #0006;
 }
+
+/* Mode diagnostic (?debug) : journal des gestes en bas de l'écran */
+#journal-debug {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; margin: 0;
+  max-height: 40vh; overflow: hidden; padding: 6px 8px; pointer-events: none;
+  background: #000c; color: #9effa0; font: 11px/1.35 ui-monospace, Menlo, monospace;
+  white-space: pre-wrap;
+}
