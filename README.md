@@ -16,12 +16,14 @@ C'est une appli web installable (PWA), hébergée sur GitHub Pages, avec les don
 
 **Supabase**
 - Integrations → Data API : Data API activée, schéma `public` exposé.
-- « Automatically expose new tables » : encore activé, à désactiver à l'étape 2 (les accès sont donnés par `grant` dans les scripts).
+- Integrations → Data API : « Automatically expose new tables » **désactivé** (les accès sont donnés par `grant` dans les scripts).
+- Authentication → Users → Add user → Create new user : 3 comptes créés à la main (Emma, Mattia, compte de test), avec « Auto Confirm User » coché.
+- Authentication → Sign In / Providers : « Allow new users to sign up » **désactivé** (inscriptions fermées).
 
 ## 🚀 Tout réinstaller depuis zéro
 
 1. Créer un projet Supabase et faire les réglages ci-dessus.
-2. Dans Supabase → SQL Editor, lancer les scripts de `sql/` dans l'ordre.
+2. Dans Supabase → SQL Editor, lancer les scripts de `sql/` dans l'ordre. Avant `03_membres.sql`, y remplacer les identifiants par ceux des nouveaux comptes.
 3. Mettre l'URL du projet et la clé publishable dans `config.js`.
 4. Activer GitHub Pages comme ci-dessus.
 
