@@ -1,0 +1,13 @@
+-- 03_membres.sql
+-- Les deux membres de l'appli. Rejouable sans erreur.
+-- Les identifiants viennent de Supabase → Authentication → Users (User UID).
+-- ⚠️ Projet recréé = nouveaux comptes = nouveaux identifiants à mettre ici.
+-- Le 3e compte (test) n'est volontairement PAS dans cette liste.
+
+insert into public.membres (user_id, prenom) values
+  ('abe163cf-f558-4b5b-9dc6-47841d07c30d', 'Emma'),
+  ('ad86c961-63a9-4286-921a-af8f40cb98cf', 'Mattia')
+on conflict (user_id) do update set prenom = excluded.prenom;
+
+-- Vérification. Attendu : 2 lignes, Emma et Mattia
+select prenom, user_id from public.membres order by prenom;
