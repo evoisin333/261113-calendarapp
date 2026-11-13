@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Test synchro</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 16px; max-width: 600px; }
+    #etat { padding: 4px 10px; border-radius: 6px; background: #eee; }
+    #etat.ok { background: #c8f0d0; }
+    #etat.probleme { background: #f8c8c8; }
+    #erreur { color: #b00020; }
+    form { display: flex; gap: 8px; margin: 16px 0; }
+    input { flex: 1; font-size: 16px; padding: 8px; } /* 16px : évite le zoom auto de Safari iPhone */
+    button { font-size: 16px; padding: 6px 10px; }
+    li { margin: 8px 0; }
+  </style>
+</head>
+<body>
+  <h1>Test synchro</h1>
+  <p>Temps réel : <span id="etat">connexion…</span></p>
+  <p>Cet appareil : <strong id="nom-appareil"></strong></p>
+  <p id="erreur"></p>
+
+  <form id="formulaire">
+    <input id="champ-texte" maxlength="200" placeholder="Message de test" required>
+    <button>Envoyer</button>
+  </form>
+
+  <ul id="liste"></ul>
+
+  <!-- Configuration (URL + clé publique) -->
+  <script src="../config.js"></script>
+  <!-- supabase-js, version figée + empreinte : le navigateur refuse le fichier s'il a été modifié -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/dist/umd/supabase.js"
+          integrity="sha384-uteMfOloLDGt042uDz+xHGF3ym63/WQ6rFq7murQRG8Ih7QrXGEGNtWd8688sb4O"
+          crossorigin="anonymous"></script>
+  <script>
+    const client = supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseCle);
+
+    const liste = document.getElementById("liste");
+    const etat = document.getElementById("etat");
+    const zoneErreur = document.getElementById("erreur");
+
+    // Devine le type d'appareil (juste pour savoir d'où vient chaque message)
+    const ua = navigator.userAgent;
+    const appareil = /iPhone|iPad/.test(ua) ? "iPhone" : /Android/.test(ua) ? "Android" : "Ordi";
+    document.getElementById("nom-appareil").textContent = appareil;
+
+    function afficherErreur(action, erreur) {
+      zoneErreur.textContent = `${action} : ${erreur.message} (code ${erreur.code ?? "?"})`;
+    }
+
+    // Une date UTC venant de la base -> heure de Bruxelles
+    function heureBruxelles(dateTexte) {
+      return new Date(dateTexte).toLocaleString("fr-BE", {
+        timeZone: "Europe/Brussels", dateStyle: "short", timeStyle: "medium"
+      });
+    }
+
+    // Recharge les 20 derniers messages
+    async function chargerMessages() {
+      const { data, error } = await client
+        .from("test_synchro")
+        .select("*")
+        .order("cree_le", { ascending: false })
+        .limit(20);
+      if (error) { afficherErreur("Lecture", error); return; }
+
+      liste.innerHTML = "";
+      for (const message of data) {
+        const ligne = document.createElement("li");
+        // textContent (et pas innerHTML) : un message ne peut pas injecter de code dans la page
+        ligne.textContent = `${message.texte} — ${message.appareil ?? "?"}, ${heureBruxelles(message.cree_le)} `;
+        const boutonSupprimer = document.createElement("button");
+        boutonSupprimer.textContent = "🗑";
+        boutonSupprimer.onclick = () => supprimerMessage(message.id);
+        ligne.append(boutonSupprimer);
+        liste.append(ligne);
+      }
+    }
+
+    // Envoi : on n'actualise PAS la liste ici, c'est le temps réel qui doit le faire
+    document.getElementById("formulaire").addEventListener("submit", async (evenement) => {
+      evenement.preventDefault();
+      const champ = document.getElementById("champ-texte");
+      const { error } = await client.from("test_synchro").insert({ texte: champ.value, appareil });
+      if (error) { afficherErreur("Envoi", error); return; }
+      zoneErreur.textContent = "";
+      champ.value = "";
+    });
+
+    async function supprimerMessage(id) {
+      const { error } = await client.from("test_synchro").delete().eq("id", id);
+      if (error) afficherErreur("Suppression", error);
+    }
+
+    // Temps réel : à chaque ajout/suppression dans la table, on recharge la liste
+    client
+      .channel("test-synchro")
+      .on("postgres_changes", { event: "*", schema: "public", table: "test_synchro" }, chargerMessages)
+      .subscribe((statut) => {
+        const connecte = statut === "SUBSCRIBED";
+        etat.textContent = connecte ? "connecté ✅" : statut;
+        etat.className = connecte ? "ok" : "probleme";
+        if (connecte) chargerMessages(); // rattrape ce qui a été raté pendant une coupure
+      });
+
+    // Retour sur la page (le téléphone met les pages en pause en arrière-plan) : on recharge
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") chargerMessages();
+    });
+
+    chargerMessages();
+  </script>
+</body>
+</html>
