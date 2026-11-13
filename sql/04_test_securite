@@ -1,0 +1,73 @@
+-- 04_test_securite.sql
+-- Test de la RLS : on « se fait passer » pour chaque compte, comme si la requête
+-- venait de l'appli. Ne laisse aucune trace dans la base. Rejouable sans erreur.
+--
+-- Attendu :
+--   Emma                  | 3      | 1      | acceptée (puis annulée)
+--   Mattia                | 3      | 1      | acceptée (puis annulée)
+--   3e compte (test)      | 0      | 0      | refusée
+--   Visiteur non connecté | refusé | refusé | refusée
+
+-- Un événement témoin, que seuls les membres doivent voir
+delete from public.evenements where titre = 'TEMOIN TEST SECURITE';
+insert into public.evenements (calendrier_id, titre, debut, fin)
+values (3, 'TEMOIN TEST SECURITE', now(), now() + interval '1 hour');
+
+create temp table if not exists resultats_test (
+  ordre int, compte text, calendriers_vus text, evenements_vus text, ecriture text
+);
+truncate resultats_test;
+
+do $$
+declare
+  compte record;
+  vus_cal text;
+  vus_ev text;
+  ecriture text;
+begin
+  for compte in
+    select * from (values
+      (1, 'Emma',                  'authenticated', 'abe163cf-f558-4b5b-9dc6-47841d07c30d'),
+      (2, 'Mattia',                'authenticated', 'ad86c961-63a9-4286-921a-af8f40cb98cf'),
+      (3, '3e compte (test)',      'authenticated', '29c97fe2-3cda-4492-af91-48505003259d'),
+      (4, 'Visiteur non connecté', 'anon',          null)
+    ) as t (ordre, nom, role, uid)
+  loop
+    -- Devenir ce compte (comme l'API le fait avec le jeton de connexion)
+    perform set_config('request.jwt.claims',
+      json_build_object('sub', compte.uid, 'role', compte.role)::text, true);
+    execute format('set local role %I', compte.role);
+
+    -- Lecture des calendriers
+    begin
+      select count(*)::text into vus_cal from public.calendriers;
+    exception when insufficient_privilege then vus_cal := 'refusé';
+    end;
+
+    -- Lecture des événements
+    begin
+      select count(*)::text into vus_ev from public.evenements;
+    exception when insufficient_privilege then vus_ev := 'refusé';
+    end;
+
+    -- Écriture : si elle passe, on l'annule aussitôt (fausse erreur volontaire)
+    begin
+      insert into public.evenements (calendrier_id, titre, debut, fin)
+      values (3, 'TEST ECRITURE', now(), now() + interval '1 hour');
+      raise exception 'annulation volontaire';
+    exception
+      when insufficient_privilege then ecriture := 'refusée';
+      when raise_exception then ecriture := 'acceptée (puis annulée)';
+    end;
+
+    -- Redevenir administrateur et noter le résultat
+    execute 'reset role';
+    insert into resultats_test values (compte.ordre, compte.nom, vus_cal, vus_ev, ecriture);
+  end loop;
+end $$;
+
+-- Ménage
+delete from public.evenements where titre = 'TEMOIN TEST SECURITE';
+
+select compte, calendriers_vus, evenements_vus, ecriture
+from resultats_test order by ordre;
