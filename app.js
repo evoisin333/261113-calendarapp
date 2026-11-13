@@ -235,6 +235,21 @@ function creerCalendrier() {
       ouvrirFormulaire(null, { date: local.slice(0, 10), heure: local.slice(11, 16),
                                journeeEntiere: info.allDay });
     },
+    // Appui long puis glisser : on choisit une plage, le formulaire s'ouvre au lâcher
+    selectable: true,
+    selectMirror: true,            // la plage choisie s'affiche comme un événement, avec ses heures
+    selectLongPressDelay: 400,     // durée de l'appui long sur téléphone (ms)
+    select: (info) => {
+      calendrier.unselect();
+      const debut = heureBruxelles(info.start);
+      const fin = heureBruxelles(info.end);
+      ouvrirFormulaire(null, {
+        date: debut.slice(0, 10), heure: debut.slice(11, 16), journeeEntiere: info.allDay,
+        // journée entière : la fin de FullCalendar est exclusive, le formulaire montre le dernier jour
+        dateFin: info.allDay ? ajouterJours(fin.slice(0, 10), -1) : fin.slice(0, 10),
+        heureFin: fin.slice(11, 16),
+      });
+    },
     // Appui sur un événement : on l'ouvre pour le modifier
     eventClick: (info) => {
       const ligne = lignesEvenements.find((l) => String(l.id) === info.event.id);
@@ -364,26 +379,42 @@ const erreurFormulaire = document.getElementById("erreur-formulaire");
 const boutonSupprimer = document.getElementById("bouton-supprimer");
 const boutonEnregistrer = document.getElementById("bouton-enregistrer");
 
-const roueDebut = creerRoue(document.getElementById("roue-debut"), corrigerFin);
-const roueFin = creerRoue(document.getElementById("roue-fin"), () => {});
+const roueDebut = creerRoue(document.getElementById("roue-debut"), quandDebutChange);
+const roueFin = creerRoue(document.getElementById("roue-fin"), quandFinChange);
 
 let ligneEnCours = null;   // null = création, sinon la ligne modifiée
+let dureeMs = 3600000;     // durée gardée quand on déplace le début (heure fixe)
+let dureeJours = 0;        // idem en journée entière (0 = un seul jour)
 
-// Si la fin passe avant le début, on la recale (1 h après, ou même jour)
-function corrigerFin() {
+function instantDebut() { return Date.parse(versUtc(champDateDebut.value, roueDebut.lire())); }
+function instantFin() { return Date.parse(versUtc(champDateFin.value, roueFin.lire())); }
+function joursEntre(date1, date2) { return (Date.parse(date2) - Date.parse(date1)) / 86400000; }
+
+// Le début bouge : la fin suit, avec la même durée (14h05 -> 15h05 si l'événement dure 1 h)
+function quandDebutChange() {
+  if (!champDateDebut.value) return;
   if (champJournee.checked) {
-    if (champDateFin.value < champDateDebut.value) champDateFin.value = champDateDebut.value;
+    champDateFin.value = ajouterJours(champDateDebut.value, dureeJours);
     return;
   }
-  const debut = `${champDateDebut.value}T${roueDebut.lire()}`;
-  const fin = `${champDateFin.value}T${roueFin.lire()}`;
-  if (fin <= debut) {
-    const uneHeurePlusTard = heureBruxelles(Date.parse(versUtc(champDateDebut.value, roueDebut.lire())) + 3600000);
-    champDateFin.value = uneHeurePlusTard.slice(0, 10);
-    roueFin.regler(uneHeurePlusTard.slice(11, 16));
-  }
+  const fin = heureBruxelles(instantDebut() + dureeMs);
+  champDateFin.value = fin.slice(0, 10);
+  roueFin.regler(fin.slice(11, 16));
 }
-champDateDebut.addEventListener("change", corrigerFin);
+
+// La fin bouge : on retient la nouvelle durée (si elle a un sens)
+function quandFinChange() {
+  if (!champDateDebut.value || !champDateFin.value) return;
+  if (champJournee.checked) {
+    const jours = joursEntre(champDateDebut.value, champDateFin.value);
+    if (jours >= 0) dureeJours = jours;
+    return;
+  }
+  const duree = instantFin() - instantDebut();
+  if (duree > 0) dureeMs = duree;
+}
+champDateDebut.addEventListener("change", quandDebutChange);
+champDateFin.addEventListener("change", quandFinChange);
 
 champJournee.addEventListener("change", () => {
   fenetre.classList.toggle("journee-entiere", champJournee.checked);
@@ -428,12 +459,19 @@ function ouvrirFormulaire(ligne, depart = null) {
     [dateFin, heureFin] = [finLocale.slice(0, 10), finLocale.slice(11, 16)];
   } else {
     journeeEntiere = depart.journeeEntiere;
-    dateDebut = dateFin = depart.date;
+    dateDebut = depart.date;
     heureDebut = journeeEntiere ? "09:00" : depart.heure;
-    const finLocale = heureBruxelles(Date.parse(versUtc(dateDebut, heureDebut)) + 3600000);
-    dateFin = journeeEntiere ? dateDebut : finLocale.slice(0, 10);
-    heureFin = finLocale.slice(11, 16);
+    if (depart.dateFin && !journeeEntiere) {
+      [dateFin, heureFin] = [depart.dateFin, depart.heureFin];      // plage choisie au doigt
+    } else {
+      const uneHeurePlusTard = heureBruxelles(Date.parse(versUtc(dateDebut, heureDebut)) + 3600000);
+      dateFin = journeeEntiere ? (depart.dateFin ?? dateDebut) : uneHeurePlusTard.slice(0, 10);
+      heureFin = uneHeurePlusTard.slice(11, 16);
+    }
   }
+  dureeJours = Math.max(joursEntre(dateDebut, dateFin), 0);
+  const dureeDepart = Date.parse(versUtc(dateFin, heureFin)) - Date.parse(versUtc(dateDebut, heureDebut));
+  dureeMs = dureeDepart > 0 ? dureeDepart : 3600000;
 
   champTitre.value = ligne?.titre ?? "";
   champLieu.value = ligne?.lieu ?? "";
