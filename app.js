@@ -9,6 +9,8 @@
 const FUSEAU = "Europe/Brussels";
 // Vue jour : une colonne par calendrier (vue « ressources » de FullCalendar Premium, licence AGPLv3)
 const VUE_JOUR = "resourceTimeGridDay";
+// Le calendrier « Nous » n'a pas de colonne : ses événements remplissent les colonnes Emma et Mattia
+const ID_NOUS = 3;   // fixé par sql/02_base.sql
 const client = supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseCle);
 
 const ecranConnexion = document.getElementById("ecran-connexion");
@@ -77,7 +79,10 @@ function versFullCalendar(ligne) {
     title: ligne.titre,
     color: couleur,
     contrastColor: "#1f2937",   // texte foncé sur les couleurs pastel
-    resourceId: String(ligne.calendrier_id),   // sa colonne en vue jour
+    // sa colonne en vue jour (« Nous » : les deux colonnes)
+    resourceIds: ligne.calendrier_id === ID_NOUS
+      ? calendriers.filter((c) => c.id !== ID_NOUS).map((c) => String(c.id))
+      : [String(ligne.calendrier_id)],
   };
 
   if (!ligne.regle_recurrence) {
@@ -232,9 +237,9 @@ function creerCalendrier() {
     initialView: lireReglage("vue", VUE_JOUR).replace(/^timeGridDay$/, VUE_JOUR),
     // FullCalendar Premium : gratuit pour les projets open source sous licence AGPLv3 (voir LICENSE)
     schedulerLicenseKey: "AGPL-My-Frontend-And-Backend-Are-Open-Source",
-    // Colonnes de la vue jour : les calendriers affichés, dans l'ordre Emma, Mattia, Nous
+    // Colonnes de la vue jour : Emma et Mattia (si affichés). Pas de colonne « Nous ».
     resources: (_info, succes) => succes(calendriers
-      .filter((c) => !calendriersMasques.has(c.id))
+      .filter((c) => c.id !== ID_NOUS && !calendriersMasques.has(c.id))
       .map((c) => ({ id: String(c.id), title: c.nom, extendedProps: { couleur: c.couleur } }))),
     resourceOrder: "id",
     resourceDayHeaderClass: "entete-colonne",
@@ -288,8 +293,13 @@ function creerCalendrier() {
     datesSet: (info) => {
       ecrireReglage("vue", info.view.type);
       majEntete();
+      requestAnimationFrame(fusionnerNous);
     },
-    eventsSet: majLigneJournee,
+    eventsSet: (evenements) => {
+      majLigneJournee(evenements);
+      requestAnimationFrame(fusionnerNous);
+    },
+    windowResize: () => requestAnimationFrame(fusionnerNous),
     // Création : appui long (puis glisser pour allonger), le formulaire s'ouvre au lâcher.
     // Pas d'« appui court » (dateClick) : sur iPhone il se déclenche dès que le doigt se pose
     // et empêche l'appui long. Comme dans le Calendrier de l'iPhone, toucher une case ne fait rien.
@@ -330,6 +340,7 @@ function creerCalendrier() {
     },
     // Petite marque 🔁 dans le coin des événements récurrents
     eventDidMount: (info) => {
+      info.el.dataset.idEvenement = info.event.id;   // pour fusionnerNous()
       // (pas en vue mois : les étiquettes sont trop petites)
       if (!ligneDe(info.event)?.regle_recurrence || info.view.type === "dayGridMonth") return;
       info.el.style.position = "relative";
@@ -673,7 +684,8 @@ async function enregistrerDeplacement(info) {
     };
   }
 
-  if (info.newResource) donnees.calendrier_id = Number(info.newResource.id);   // autre colonne = autre calendrier
+  // Autre colonne = autre calendrier (Emma <-> Mattia). Un événement « Nous » reste « Nous ».
+  if (info.newResource && ligne.calendrier_id !== ID_NOUS) donnees.calendrier_id = Number(info.newResource.id);
 
   const { error } = await client.from("evenements").update(donnees).eq("id", ligne.id);
   if (error) {
@@ -1172,4 +1184,58 @@ function finGlisse(evenement) {
 for (const zone of [zoneCalendrier, bandeSemaine]) {
   zone.addEventListener("touchstart", debutGlisse, { passive: true });
   zone.addEventListener("touchend", finGlisse, { passive: true });
+}
+
+
+
+// ---------- Vue jour : un événement « Nous » = un seul bloc sur les deux colonnes ----------
+// FullCalendar l'affiche deux fois (une copie par colonne). Quand les deux copies ont toute la
+// largeur de leur colonne (aucun autre événement en même temps), on étire une copie sur les deux
+// colonnes et on cache l'autre. Sinon, on garde les deux copies (chacune dans sa colonne).
+// On ne touche jamais aux positions calculées par FullCalendar : seulement à des réglages
+// qu'on peut défaire (marge, largeur, visibilité), notés dans data-* pour les remettre.
+
+function remettreCopie(support) {
+  if (support.dataset.margeOrigine !== undefined) {
+    support.style.marginInlineStart = support.dataset.margeOrigine;
+    delete support.dataset.margeOrigine;
+  }
+  if (support.dataset.largeurOrigine !== undefined) {
+    support.style.width = support.dataset.largeurOrigine;
+    delete support.dataset.largeurOrigine;
+  }
+  support.style.visibility = "";
+}
+
+function fusionnerNous() {
+  if (!calendrier) return;
+  const copies = {};
+  for (const el of zoneCalendrier.querySelectorAll("[data-id-evenement]")) {
+    const support = el.parentElement;               // l'élément positionné par FullCalendar
+    remettreCopie(support);
+    if (calendrier.view.type !== VUE_JOUR) continue;
+    const ligne = lignesEvenements.find((l) => String(l.id) === el.dataset.idEvenement);
+    if (ligne?.calendrier_id !== ID_NOUS) continue;
+    const cle = `${el.dataset.idEvenement}|${support.style.top}`;
+    (copies[cle] ??= []).push(support);
+  }
+  for (const paire of Object.values(copies)) {
+    if (paire.length !== 2) continue;
+    paire.sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
+    const [gauche, droite] = paire;
+    const ecart = droite.getBoundingClientRect().left - gauche.getBoundingClientRect().left;
+
+    if (gauche.style.width === "100%" && droite.style.width === "100%") {
+      // Ligne « Journée » : la copie de gauche s'élargit sur les deux colonnes
+      gauche.dataset.largeurOrigine = gauche.style.width;
+      gauche.style.width = `calc(100% + ${ecart}px)`;
+      droite.style.visibility = "hidden";
+    } else if (gauche.style.insetInline === "0%" && droite.style.insetInline === "0%") {
+      // Grille des heures : la copie de droite s'étire vers la gauche (elle passe ainsi
+      // par-dessus la colonne de gauche et son trait de séparation)
+      droite.dataset.margeOrigine = droite.style.marginInlineStart;
+      droite.style.marginInlineStart = `${-ecart}px`;
+      gauche.style.visibility = "hidden";
+    }
+  }
 }
