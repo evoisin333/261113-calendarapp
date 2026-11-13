@@ -4,6 +4,7 @@
 // 3c : récurrences (répétition, supprimer ou détacher une seule date).
 // 3d : recherche (titre, lieu, notes ; sans accents ni majuscules).
 // 3e : glisser-déposer (déplacer, changer la durée).
+// 3f : apparence (style C : pilules, bande semaine, menu calendriers, mois sans cases, zoom du mois).
 
 const FUSEAU = "Europe/Brussels";
 const client = supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseCle);
@@ -22,6 +23,8 @@ let calendriers = [];         // lignes de la table calendriers
 let lignesEvenements = [];    // lignes de la table evenements
 let canalTempsReel = null;
 let calendriersMasques = new Set(lireReglage("calendriersMasques", []));
+let prenomConnecte = "";
+let moisDetaille = lireReglage("moisDetaille", false);   // vue mois zoomée (titres et heures)
 
 
 // ---------- Réglages gardés sur ce téléphone (vue, calendriers masqués) ----------
@@ -193,10 +196,10 @@ async function demarrerAppli() {
 
   // Calendrier proposé par défaut : celui qui porte le prénom de la personne connectée
   const { data: moi } = await client.from("membres").select("prenom").eq("user_id", utilisateurId);
-  calendrierParDefaut = calendriers.find((c) => c.nom === moi?.[0]?.prenom)?.id ?? 3;
+  prenomConnecte = moi?.[0]?.prenom ?? "";
+  calendrierParDefaut = calendriers.find((c) => c.nom === prenomConnecte)?.id ?? 3;
 
   document.getElementById("bouton-ajouter").hidden = calendriers.length === 0;
-  afficherFiltres();
   creerCalendrier();
   await chargerEvenements();
   ecouterTempsReel();
@@ -224,14 +227,51 @@ function creerCalendrier() {
     locale: "fr",
     firstDay: 1,                                     // lundi
     initialView: lireReglage("vue", "timeGridDay"),
-    headerToolbar: { left: "prev,next", right: "title" },
-    footerToolbar: { left: "today", right: "timeGridDay,timeGridWeek,dayGridMonth" },
+    headerToolbar: false,                            // nos propres pilules en haut et en bas
+    footerToolbar: false,
     height: "100%",
     nowIndicator: true,
     scrollTime: heureDeDepart(),
-    dayMaxEvents: true,                              // vue mois : "+2" si trop d'événements
+    allDayText: "Journée",
+    // Jour et semaine : la bande semaine remplace l'en-tête des colonnes
+    views: {
+      timeGridDay: { dayHeaders: false },
+      timeGridWeek: { dayHeaders: false, displayEventTime: false },   // colonnes étroites : le titre seul
+      // eventDisplay "block" : tous les événements en étiquettes pleines (pas de point + heure)
+      dayGridMonth: { dayHeaderFormat: { weekday: "narrow" }, fixedWeekCount: false, showNonCurrentDates: false,
+                      displayEventTime: false },
+    },
+    dayMaxEvents: moisDetaille ? false : 3,          // vue mois compacte : « +2 » si trop d'événements
+    // Nos propres noms de classes, pour le style (voir style.css)
+    eventDisplay: "block",                           // étiquettes pleines partout (pas de point + heure)
+    eventClass: "evenement",
+    columnEventTitleClass: "titre-evt",
+    columnEventTimeClass: "heure-evt",
+    moreLinkClass: "lien-plus",
+    rowEventClass: "evenement-mois",
+    dayCellClass: (info) => ["mois-case", info.isToday && "aujourdhui", info.isOther && "autre-mois",
+                             (info.dow === 0 || info.dow === 6) && "week-end"].filter(Boolean).join(" "),
+    dayCellTopClass: "mois-numero",
+    dayHeaderClass: "mois-entete",
+    slotHeaderClass: "heure-libelle",
+    // Vue mois détaillée : titre (2 lignes) et heure dessous
+    eventContent: (info) => {
+      if (!moisDetaille || info.view.type !== "dayGridMonth") return true;   // true = affichage normal
+      const bloc = document.createElement("div");
+      bloc.className = "detail-mois";
+      bloc.append(Object.assign(document.createElement("span"), { className: "titre", textContent: info.event.title }));
+      if (!info.event.allDay) {
+        const heure = heureBruxelles(info.event.start).slice(11, 16);   // ex. "18:30"
+        bloc.append(Object.assign(document.createElement("span"), { className: "heure", textContent: heure }));
+      }
+      return { domNodes: [bloc] };
+    },
     events: (_periode, succes) => succes(evenementsAffiches()),
-    datesSet: (info) => ecrireReglage("vue", info.view.type),
+    datesSet: (info) => {
+      ecrireReglage("vue", info.view.type);
+      majEntete();
+    },
+    eventsSet: majLigneJournee,
     // Création : appui long (puis glisser pour allonger), le formulaire s'ouvre au lâcher.
     // Pas d'« appui court » (dateClick) : sur iPhone il se déclenche dès que le doigt se pose
     // et empêche l'appui long. Comme dans le Calendrier de l'iPhone, toucher une case ne fait rien.
@@ -271,7 +311,8 @@ function creerCalendrier() {
     },
     // Petite marque 🔁 dans le coin des événements récurrents
     eventDidMount: (info) => {
-      if (!ligneDe(info.event)?.regle_recurrence) return;
+      // (pas en vue mois : les étiquettes sont trop petites)
+      if (!ligneDe(info.event)?.regle_recurrence || info.view.type === "dayGridMonth") return;
       info.el.style.position = "relative";
       info.el.append(Object.assign(document.createElement("span"),
         { className: "marque-serie", textContent: "🔁" }));
@@ -279,27 +320,7 @@ function creerCalendrier() {
   });
   calendrier.render();
   brancherDebugCalendrier();
-}
-
-// Un bouton par calendrier pour l'afficher ou le masquer
-function afficherFiltres() {
-  const zone = document.getElementById("filtres");
-  zone.innerHTML = "";
-  for (const cal of calendriers) {
-    const bouton = document.createElement("button");
-    bouton.className = "filtre";
-    bouton.textContent = cal.nom;
-    bouton.style.setProperty("--couleur", cal.couleur);
-    bouton.setAttribute("aria-pressed", String(!calendriersMasques.has(cal.id)));
-    bouton.addEventListener("click", () => {
-      if (calendriersMasques.has(cal.id)) calendriersMasques.delete(cal.id);
-      else calendriersMasques.add(cal.id);
-      ecrireReglage("calendriersMasques", [...calendriersMasques]);
-      afficherFiltres();
-      calendrier.refetchEvents();
-    });
-    zone.append(bouton);
-  }
+  majEntete();
 }
 
 // Recharge tous les événements (par paquets de 1000, la limite de l'API)
@@ -912,7 +933,11 @@ function afficherResultats() {
   for (const [titre, liste] of [["À venir", aVenir], ["Passés", passes]]) {
     if (liste.length === 0) continue;
     zoneResultats.append(Object.assign(document.createElement("h3"), { textContent: titre }));
-    for (const { ligne, debut } of liste) zoneResultats.append(creerResultat(ligne, debut));
+    for (const { ligne, debut, aVenir: futur } of liste) {
+      const resultat = creerResultat(ligne, debut);
+      resultat.classList.toggle("passe", !futur);
+      zoneResultats.append(resultat);
+    }
   }
 }
 
@@ -953,3 +978,150 @@ document.getElementById("bouton-recherche").addEventListener("click", () => {
 });
 document.getElementById("bouton-fermer-recherche").addEventListener("click", () => fenetreRecherche.close());
 champRecherche.addEventListener("input", afficherResultats);
+
+
+
+// ---------- En-tête : titre, bande semaine, boutons (style C) ----------
+
+const titrePeriode = document.getElementById("titre-periode");
+const bandeSemaine = document.getElementById("bande-semaine");
+const NOMS_MOIS = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet",
+                   "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
+const LETTRES_JOURS = ["L", "M", "M", "J", "V", "S", "D"];
+
+// Met à jour le titre, la bande semaine et le bouton de vue actif
+function majEntete() {
+  if (!calendrier) return;
+  const vue = calendrier.view.type;
+  const dateAffichee = heureBruxelles(calendrier.getDate()).slice(0, 10);   // "2026-11-13"
+  const aujourdhui = heureBruxelles(Date.now()).slice(0, 10);
+
+  // Titre : le mois, et l'année seulement si ce n'est pas l'année en cours
+  const [annee, mois] = dateAffichee.split("-").map(Number);
+  titrePeriode.textContent = NOMS_MOIS[mois - 1];
+  if (String(annee) !== aujourdhui.slice(0, 4)) {
+    titrePeriode.append(" ", Object.assign(document.createElement("span"), { className: "annee", textContent: annee }));
+  }
+
+  // Bande semaine (jour et semaine) : du lundi au dimanche autour de la date affichée
+  bandeSemaine.hidden = vue === "dayGridMonth";
+  bandeSemaine.classList.toggle("vue-semaine", vue === "timeGridWeek");
+  bandeSemaine.innerHTML = "";
+  const lundi = ajouterJours(dateAffichee, -((new Date(dateAffichee + "T00:00:00Z").getUTCDay() + 6) % 7));
+  for (let i = 0; i < 7; i++) {
+    const date = ajouterJours(lundi, i);
+    const bouton = document.createElement("button");
+    bouton.type = "button";
+    bouton.setAttribute("aria-label", date);
+    if (i >= 5) bouton.classList.add("week-end");
+    if (date === aujourdhui) bouton.classList.add("aujourdhui");
+    if (vue === "timeGridDay" && date === dateAffichee) bouton.classList.add("choisi");
+    bouton.append(Object.assign(document.createElement("span"), { className: "lettre", textContent: LETTRES_JOURS[i] }),
+                  Object.assign(document.createElement("span"), { className: "num", textContent: Number(date.slice(8)) }));
+    // Toucher un jour : vue jour sur ce jour
+    bouton.addEventListener("click", () => calendrier.changeView("timeGridDay", date));
+    bandeSemaine.append(bouton);
+  }
+
+  // Bouton de vue actif
+  for (const bouton of document.querySelectorAll(".choix-vue button")) {
+    bouton.setAttribute("aria-pressed", String(bouton.dataset.vue === vue));
+  }
+}
+
+document.getElementById("bouton-precedent").addEventListener("click", () => calendrier?.prev());
+document.getElementById("bouton-suivant").addEventListener("click", () => calendrier?.next());
+document.getElementById("bouton-aujourdhui").addEventListener("click", () => {
+  calendrier?.today();
+  calendrier?.scrollToTime(heureDeDepart());
+});
+for (const bouton of document.querySelectorAll(".choix-vue button")) {
+  bouton.addEventListener("click", () => calendrier?.changeView(bouton.dataset.vue));
+}
+
+// Ligne « Journée » des vues jour et semaine : seulement s'il y a un événement journée entière
+function majLigneJournee(evenements) {
+  if (!calendrier || calendrier.view.type === "dayGridMonth") return;
+  const { activeStart, activeEnd } = calendrier.view;
+  const ilYEnA = evenements.some((ev) => ev.allDay && ev.start < activeEnd && (ev.end ?? ev.start) >= activeStart);
+  if (calendrier.getOption("allDaySlot") !== ilYEnA) calendrier.setOption("allDaySlot", ilYEnA);
+}
+
+
+// ---------- Menu : calendriers affichés, mois détaillé, compte ----------
+
+const fenetreMenu = document.getElementById("fenetre-menu");
+const champMoisDetaille = document.getElementById("champ-mois-detaille");
+
+function afficherMenuCalendriers() {
+  const zone = document.getElementById("liste-calendriers");
+  zone.innerHTML = "";
+  for (const cal of calendriers) {
+    const bouton = document.createElement("button");
+    bouton.type = "button";
+    bouton.className = "ligne-groupe ligne-calendrier";
+    bouton.style.setProperty("--couleur", cal.couleur);
+    const affiche = !calendriersMasques.has(cal.id);
+    bouton.setAttribute("aria-pressed", String(affiche));
+    bouton.append(Object.assign(document.createElement("span"), { className: "rond", textContent: affiche ? "✓" : "" }), cal.nom);
+    if (!affiche) bouton.append(Object.assign(document.createElement("span"), { className: "discret", textContent: "masqué", style: "margin-left:auto;font-size:13px" }));
+    bouton.style.justifyContent = "flex-start";
+    bouton.addEventListener("click", () => {
+      if (calendriersMasques.has(cal.id)) calendriersMasques.delete(cal.id);
+      else calendriersMasques.add(cal.id);
+      changerCalendriersMasques();
+    });
+    zone.append(bouton);
+  }
+}
+
+function changerCalendriersMasques() {
+  ecrireReglage("calendriersMasques", [...calendriersMasques]);
+  afficherMenuCalendriers();
+  calendrier?.refetchEvents();
+}
+
+document.getElementById("bouton-menu").addEventListener("click", () => {
+  afficherMenuCalendriers();
+  champMoisDetaille.checked = moisDetaille;
+  document.getElementById("prenom-connecte").textContent = prenomConnecte;
+  fenetreMenu.showModal();
+});
+document.getElementById("bouton-fermer-menu").addEventListener("click", () => fenetreMenu.close());
+document.getElementById("bouton-tout-afficher").addEventListener("click", () => {
+  calendriersMasques.clear();
+  changerCalendriersMasques();
+});
+champMoisDetaille.addEventListener("change", () => changerMoisDetaille(champMoisDetaille.checked));
+document.getElementById("bouton-deconnexion").addEventListener("click", () => fenetreMenu.close());
+
+
+// ---------- Vue mois : compacte ou détaillée (zoom à deux doigts) ----------
+
+function changerMoisDetaille(detaille) {
+  if (detaille === moisDetaille) return;
+  moisDetaille = detaille;
+  ecrireReglage("moisDetaille", detaille);
+  if (!calendrier) return;
+  calendrier.setOption("dayMaxEvents", detaille ? false : 3);
+  calendrier.render();   // redessine les événements avec le nouveau contenu
+}
+
+// Écarter deux doigts : vue détaillée ; les pincer : vue compacte (seulement en vue mois)
+const zoneCalendrier = document.getElementById("calendrier");
+let ecartDepart = null;
+function ecartDoigts(evenement) {
+  const [a, b] = evenement.touches;
+  return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+}
+zoneCalendrier.addEventListener("touchstart", (evenement) => {
+  ecartDepart = evenement.touches.length === 2 ? ecartDoigts(evenement) : null;
+}, { passive: true });
+zoneCalendrier.addEventListener("touchmove", (evenement) => {
+  if (ecartDepart === null || evenement.touches.length !== 2 || calendrier?.view.type !== "dayGridMonth") return;
+  const rapport = ecartDoigts(evenement) / ecartDepart;
+  if (rapport > 1.25) { changerMoisDetaille(true); ecartDepart = null; }
+  if (rapport < 0.8) { changerMoisDetaille(false); ecartDepart = null; }
+}, { passive: true });
+// Safari : empêche le zoom de toute la page quand on écarte deux doigts sur le calendrier
+zoneCalendrier.addEventListener("gesturestart", (evenement) => evenement.preventDefault());

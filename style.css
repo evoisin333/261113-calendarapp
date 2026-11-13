@@ -1,17 +1,35 @@
-/* Couleurs de l'appli : clair par défaut, sombre si le téléphone est en mode sombre */
+/* Style C : fond gris, blocs pastel pleins, boutons en pilules.
+   Clair par défaut, sombre si le téléphone est en mode sombre. */
 :root {
-  --fond: #ffffff;
-  --texte: #111827;
-  --discret: #6b7280;
-  --erreur: #dc2626;
-  --bordure: #d1d5db;
+  --fond: #F4F4F6;
+  --carte: #FFFFFF;
+  --champ: #EDEDF1;
+  --pilule: #FFFFFF;
+  --pilule-bord: rgba(0, 0, 0, 0.07);
+  --texte: #15161A;
+  --discret: #6B6C75;
+  --separateur: #E3E3E8;
+  --actif: #15161A;
+  --sur-actif: #FFFFFF;
+  --corail: #E5533F;
+  --bleu: #285A8C;
+  --texte-pastel: #1F2937;   /* texte foncé sur les pastels */
+  --ombre: 0 4px 16px rgba(0, 0, 0, 0.10);
 }
 [data-color-scheme="dark"] {
-  --fond: #030712;
-  --texte: #f3f4f6;
-  --discret: #9ca3af;
-  --erreur: #f87171;
-  --bordure: #374151;
+  --fond: #15161A;
+  --carte: #1E1F25;
+  --champ: #2A2B33;
+  --pilule: #22232A;
+  --pilule-bord: rgba(255, 255, 255, 0.06);
+  --texte: #F2F2F5;
+  --discret: #8A8B94;
+  --separateur: #2A2B33;
+  --actif: #F2F2F5;
+  --sur-actif: #15161A;
+  --corail: #FF7A6B;
+  --bleu: #B3D4F2;
+  --ombre: 0 6px 20px rgba(0, 0, 0, 0.45);
 }
 
 [hidden] { display: none !important; }
@@ -21,117 +39,227 @@ html, body {
   height: 100%;
   background: var(--fond);
   color: var(--texte);
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", sans-serif;
 }
 
 /* 16px minimum : sinon Safari iPhone zoome dans le champ */
-input, button { font-size: 16px; font-family: inherit; }
+input, button, select, textarea { font-size: 16px; font-family: inherit; color: inherit; }
+button { cursor: pointer; }
 
-.erreur { color: var(--erreur); margin: 4px 8px; }
+.erreur { color: var(--corail); margin: 4px 16px; }
 .erreur:empty { display: none; }
+.discret { background: none; border: 0; color: var(--discret); padding: 8px 4px; }
+.lien { background: none; border: 0; color: var(--bleu); padding: 8px 2px; align-self: flex-start; }
+.bouton-clair {
+  height: 40px; padding: 0 16px; border: 0; border-radius: 999px;
+  background: var(--actif); color: var(--sur-actif); font-weight: 700;
+}
 
-/* --- Connexion --- */
-#ecran-connexion { max-width: 340px; margin: 15vh auto 0; padding: 16px; }
-#formulaire-connexion label { display: block; margin-bottom: 14px; }
+
+/* ---------- Connexion ---------- */
+#ecran-connexion { max-width: 340px; margin: 0 auto; padding: 14vh 24px 0; text-align: center; }
+.icone-appli { display: block; margin: 0 auto; border-radius: 24px; }
+#ecran-connexion h1 { margin: 12px 0 24px; font-size: 30px; font-weight: 800; letter-spacing: -0.4px; }
+#formulaire-connexion { text-align: left; }
+#formulaire-connexion label { display: block; margin-bottom: 14px; font-size: 14px; color: var(--discret); }
 #formulaire-connexion input {
-  display: block; width: 100%; box-sizing: border-box; margin-top: 4px; padding: 10px;
-  border: 1px solid var(--bordure); border-radius: 8px; background: var(--fond); color: var(--texte);
+  display: block; width: 100%; box-sizing: border-box; margin-top: 6px; height: 50px; padding: 0 14px;
+  border: 0; border-radius: 14px; background: var(--champ); color: var(--texte); font-size: 17px;
 }
 #bouton-connexion {
-  width: 100%; padding: 12px; border: 0; border-radius: 8px;
-  background: #3b82f6; color: #fff; font-weight: 600;
+  width: 100%; height: 52px; margin-top: 8px; border: 0; border-radius: 999px;
+  background: var(--actif); color: var(--sur-actif); font-size: 17px; font-weight: 700;
 }
+.note-connexion { text-align: center; font-size: 13px; color: var(--discret); }
 
-/* --- Appli : prend tout l'écran, en évitant l'encoche de l'iPhone --- */
+
+/* ---------- Appli : tout l'écran, en évitant l'encoche de l'iPhone ---------- */
 #ecran-appli {
   display: flex; flex-direction: column; height: 100dvh; box-sizing: border-box;
   padding: env(safe-area-inset-top) env(safe-area-inset-right)
            env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
-.barre { display: flex; align-items: center; gap: 8px; padding: 8px; }
-#filtres { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; }
 
-/* Un bouton par calendrier : plein = affiché, barré = masqué */
-.filtre {
-  border: 2px solid var(--couleur); background: var(--couleur); color: #1f2937;
-  border-radius: 999px; padding: 4px 12px; font-size: 14px;
+/* Pilules (barres du haut et du bas) */
+.pilule {
+  display: flex; gap: 2px; padding: 4px; border-radius: 999px;
+  background: var(--pilule); border: 1px solid var(--pilule-bord); box-shadow: var(--ombre);
 }
-.filtre[aria-pressed="false"] {
-  background: transparent; color: var(--discret); text-decoration: line-through;
+.bouton-icone {
+  width: 44px; height: 44px; border: 0; border-radius: 999px; background: transparent;
+  display: flex; align-items: center; justify-content: center; color: var(--texte);
 }
+.barre-haut { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px 0; }
+#etat-synchro { width: 8px; height: 8px; border-radius: 50%; background: var(--discret); opacity: 0.6; }
+#etat-synchro.ok { background: #4CAF7A; opacity: 1; }
+#etat-synchro.probleme { background: var(--corail); opacity: 1; }
 
-#etat-synchro { color: var(--discret); font-size: 12px; }
-#etat-synchro.ok { color: #22c55e; }
-#etat-synchro.probleme { color: var(--erreur); }
+#titre-periode { margin: 10px 0 0; padding: 0 20px; font-size: 34px; font-weight: 800; letter-spacing: -0.5px; line-height: 1.1; }
+#titre-periode .annee { color: var(--discret); font-weight: 600; }
 
-.discret { background: none; border: 0; color: var(--discret); font-size: 13px; padding: 4px; }
+/* Bande semaine (vues jour et semaine) */
+.bande-semaine {
+  display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px;
+  margin: 12px 12px 6px; padding: 8px; border-radius: 18px; background: var(--carte);
+}
+.bande-semaine button {
+  height: 58px; border: 0; border-radius: 14px; background: transparent; color: var(--texte);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+}
+.bande-semaine .lettre { font-size: 12px; font-weight: 600; opacity: 0.7; }
+.bande-semaine .num { font-size: 19px; font-weight: 700; }
+.bande-semaine .week-end { color: var(--discret); }
+.bande-semaine .aujourdhui { color: var(--corail); }
+.bande-semaine .choisi { background: var(--actif); color: var(--sur-actif); }
+/* en vue semaine, la bande sert d'en-tête aux colonnes : décalée de la colonne des heures */
+.bande-semaine.vue-semaine { margin-left: 52px; margin-right: 6px; padding: 6px 2px; gap: 2px; }
+.bande-semaine.vue-semaine button { height: 50px; }
 
+/* Barre du bas : Aujourd'hui + choix de la vue */
+.barre-bas { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px 12px; }
+.pilule-texte { height: 50px; padding: 0 20px; align-items: center; justify-content: center; color: var(--texte); font-size: 16px; font-weight: 600; border-radius: 999px; }
+.choix-vue button {
+  height: 40px; padding: 0 14px; border: 0; border-radius: 999px; background: transparent;
+  color: var(--discret); font-size: 15px; font-weight: 600;
+}
+.choix-vue button[aria-pressed="true"] { background: var(--actif); color: var(--sur-actif); font-weight: 700; }
+
+
+/* ---------- Calendrier (FullCalendar) ---------- */
 #calendrier {
-  flex: 1; min-height: 0; padding: 0 4px 4px;
+  flex: 1; min-height: 0; padding: 0 6px 0;
   /* appui long sur iPhone : pas de sélection de texte ni de menu « Copier / Rechercher » */
   -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+  /* deux doigts : réservés au zoom de la vue mois (pas au zoom de la page) */
+  touch-action: pan-x pan-y;
+  /* couleurs du thème FullCalendar, branchées sur les nôtres */
+  --fc-classic-background: var(--fond);
+  --fc-classic-border: var(--separateur);
+  --fc-classic-strong-border: var(--separateur);
+  --fc-classic-foreground: var(--texte);
+  --fc-classic-muted-foreground: var(--discret);
+  --fc-classic-faint-foreground: var(--discret);
+  --fc-classic-faint: transparent;
+  --fc-classic-muted: var(--carte);
+  --fc-classic-today: transparent;
+  --fc-classic-now: var(--corail);
+  --fc-classic-primary: var(--actif);
 }
-#titre-fenetre:focus { outline: none; }
 
-/* Bouton rond « + » en bas à droite, au-dessus des boutons de vue */
-#bouton-ajouter {
-  position: fixed; right: calc(16px + env(safe-area-inset-right));
-  bottom: calc(72px + env(safe-area-inset-bottom));
-  width: 56px; height: 56px; border-radius: 50%; border: 0; z-index: 10;
-  background: #3b82f6; color: #fff; font-size: 30px; line-height: 1;
-  box-shadow: 0 4px 12px #0005;
+/* Événements : bloc pastel plein, texte foncé, coins arrondis */
+.evenement { border-radius: 8px !important; border: 0 !important; font-weight: 600; }
+.marque-serie {
+  position: absolute; top: 2px; right: 3px; font-size: 10px; line-height: 1;
+  opacity: 0.8; pointer-events: none;
 }
 
-/* --- Formulaire : plein écran sur téléphone --- */
-#fenetre-evenement {
+/* Vue mois : pas de cases, juste une ligne entre les semaines, gros numéros */
+.mois-case { border-left-color: transparent !important; border-right-color: transparent !important; }
+.mois-numero { justify-content: center !important; padding-top: 4px; }
+.mois-numero > [aria-hidden="true"] { font-size: 18px; font-weight: 600; color: var(--texte); }
+.mois-case.week-end .mois-numero > [aria-hidden="true"] { color: var(--discret); }
+.mois-case.aujourdhui .mois-numero > [aria-hidden="true"] {
+  display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px;
+  border-radius: 50%; background: var(--actif); color: var(--sur-actif);
+}
+.mois-case.autre-mois .mois-numero { visibility: hidden; }
+.mois-entete { border-color: transparent !important; font-weight: 600; font-size: 13px; }
+.evenement-mois { border-radius: 5px !important; font-size: 12px; margin-top: 2px !important; }
+
+/* Vue mois détaillée (zoom) : titre sur deux lignes et heure dessous */
+.detail-mois { display: flex; flex-direction: column; padding: 2px 3px; line-height: 1.2; white-space: normal; }
+.detail-mois .titre {
+  font-weight: 700; overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.detail-mois .heure { font-size: 11px; opacity: 0.75; font-variant-numeric: tabular-nums; }
+
+.lien-plus { border: 0 !important; color: var(--discret) !important; font-size: 12px; justify-content: center; }
+
+/* Vues jour et semaine : titre en gras, heure plus petite */
+.titre-evt { font-size: 14px; font-weight: 700; }
+.heure-evt { font-size: 12px; font-weight: 500; opacity: 0.8; }
+.evenement-mois .titre-evt { font-size: 12px; }
+
+/* Vues jour et semaine : grille légère */
+.heure-libelle { font-size: 12px; color: var(--discret); font-variant-numeric: tabular-nums; }
+
+
+/* ---------- Fenêtres (formulaire, recherche, menu) ---------- */
+dialog {
   width: 100%; max-width: 480px; max-height: 100dvh; margin: auto; box-sizing: border-box;
-  border: 0; border-radius: 12px; padding: 16px;
-  padding-top: calc(16px + env(safe-area-inset-top));
+  border: 0; border-radius: 16px; padding: 12px 16px 20px;
+  padding-top: calc(12px + env(safe-area-inset-top));
   background: var(--fond); color: var(--texte);
 }
+dialog::backdrop { background: #0009; }
 @media (max-width: 520px) {
-  #fenetre-evenement { height: 100dvh; max-width: none; border-radius: 0; }
+  #fenetre-evenement, #fenetre-recherche { height: 100dvh; max-width: none; border-radius: 0; }
+  dialog.feuille { margin: auto 0 0; max-width: none; border-radius: 18px 18px 0 0; padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
 }
-#fenetre-evenement::backdrop { background: #0008; }
-#fenetre-evenement h2 { margin: 0 0 12px; font-size: 1.2em; }
-#formulaire-evenement { display: flex; flex-direction: column; gap: 12px; }
-#formulaire-evenement input:not([type="checkbox"]):not([type="radio"]),
-#formulaire-evenement textarea {
-  width: 100%; box-sizing: border-box; padding: 10px; font-size: 16px;
-  border: 1px solid var(--bordure); border-radius: 8px;
-  background: var(--fond); color: var(--texte); font-family: inherit;
+
+/* Blocs arrondis, comme dans les réglages de l'iPhone */
+.groupe { display: flex; flex-direction: column; border-radius: 14px; background: var(--carte); overflow: hidden; }
+.ligne-groupe {
+  display: flex; justify-content: space-between; align-items: center; gap: 8px; width: 100%;
+  min-height: 48px; margin: 0; padding: 0 14px; box-sizing: border-box;
+  background: none; border: 0; text-align: left; font-size: 17px;
 }
-#champ-titre { font-size: 18px !important; font-weight: 600; }
+.groupe > * + * { border-top: 1px solid var(--separateur); }
+.danger-texte { color: var(--corail); }
+
+/* Interrupteur oui/non (case à cocher déguisée) */
+.interrupteur {
+  appearance: none; -webkit-appearance: none; flex: none; position: relative; margin: 0;
+  width: 51px; height: 31px; border-radius: 16px; background: var(--champ); transition: background 0.2s;
+}
+.interrupteur::after {
+  content: ""; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%;
+  background: #FFFFFF; box-shadow: 0 1px 3px #0004; transition: transform 0.2s;
+}
+.interrupteur:checked { background: #4CAF7A; }
+.interrupteur:checked::after { transform: translateX(20px); }
+
+/* --- Formulaire d'un événement --- */
+#formulaire-evenement { display: flex; flex-direction: column; gap: 14px; }
+.entete-formulaire { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+#titre-fenetre { margin: 0; font-size: 17px; font-weight: 700; text-align: center; }
+#titre-fenetre:focus { outline: none; }
 .note { margin: 0; color: var(--discret); font-size: 14px; }
+#formulaire-evenement .groupe input:not([type="checkbox"]),
+#formulaire-evenement .groupe textarea {
+  width: 100%; box-sizing: border-box; min-height: 48px; padding: 10px 14px; border: 0;
+  background: transparent; color: var(--texte); font-size: 17px; resize: none;
+}
+#champ-titre { font-weight: 600; }
 
-/* Choix du calendrier : 3 pastilles colorées */
-.choix-calendrier { display: flex; gap: 8px; }
+/* Choix du calendrier : 3 pastilles, celle choisie est pleine */
+.choix-calendrier { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .choix-calendrier label {
-  flex: 1; text-align: center; padding: 8px; border-radius: 999px; font-size: 15px;
-  border: 2px solid var(--couleur); color: var(--texte);
+  display: flex; align-items: center; justify-content: center; gap: 8px; height: 44px; border-radius: 14px;
+  background: var(--carte); color: var(--texte); font-size: 15px;
 }
+.choix-calendrier label::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--couleur); }
 .choix-calendrier input { display: none; }
-.choix-calendrier label:has(input:checked) { background: var(--couleur); color: #1f2937; font-weight: 600; }
+.choix-calendrier label:has(input:checked) { background: var(--couleur); color: var(--texte-pastel); font-weight: 700; }
+.choix-calendrier label:has(input:checked)::before { background: var(--texte-pastel); }
 
-.ligne-case { display: flex; align-items: center; gap: 8px; }
-.ligne-case input { width: 20px; height: 20px; }
-
-.ligne-date { display: grid; grid-template-columns: 50px minmax(0, 1fr) auto; align-items: center; gap: 8px; }
-/* Sur iPhone, le champ date a une largeur minimale qui le faisait déborder sur la roue */
-.ligne-date input[type="date"] { min-width: 0; }
-
-/* Roue horaire : heures et minutes, on fait défiler, la valeur du milieu est choisie */
-.roue-heure {
-  display: flex; gap: 2px; position: relative;
-  border: 1px solid var(--bordure); border-radius: 8px; overflow: hidden;
+/* Dates : « Début / Fin », date, roue horaire */
+.ligne-date { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 8px 14px; }
+.ligne-date input[type="date"] {
+  min-width: 0; height: 40px; padding: 0 10px; border: 0; border-radius: 10px;
+  background: var(--champ); color: var(--texte);
 }
+.ligne-groupe:has(.interrupteur) { cursor: pointer; }
+
+/* Roue horaire : on fait défiler, la valeur du milieu est choisie */
+.roue-heure { display: flex; gap: 2px; position: relative; border-radius: 10px; background: var(--champ); overflow: hidden; }
 .roue-heure::after {   /* bandeau qui marque la valeur choisie */
-  content: ""; position: absolute; left: 0; right: 0; top: 40px; height: 32px;
-  border-top: 1px solid var(--bordure); border-bottom: 1px solid var(--bordure);
-  pointer-events: none;
+  content: ""; position: absolute; left: 4px; right: 4px; top: 40px; height: 32px;
+  border-radius: 8px; background: var(--carte); z-index: 0; pointer-events: none;
 }
 .roue {
-  width: 48px; height: 112px; overflow-y: scroll; scroll-snap-type: y mandatory;
+  position: relative; z-index: 1; width: 48px; height: 112px; overflow-y: scroll; scroll-snap-type: y mandatory;
   scrollbar-width: none; -webkit-overflow-scrolling: touch;
   /* valeurs du haut et du bas estompées, celle du milieu bien visible */
   -webkit-mask-image: linear-gradient(transparent, #000 40%, #000 60%, transparent);
@@ -141,25 +269,78 @@ input, button { font-size: 16px; font-family: inherit; }
 .roue .espace { height: 40px; scroll-snap-align: none; }   /* vide en haut et en bas */
 .roue div {
   height: 32px; line-height: 32px; text-align: center; scroll-snap-align: center;
-  font-size: 18px; font-variant-numeric: tabular-nums;
+  font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums;
 }
 .journee-entiere .roue-heure { visibility: hidden; }
 
-.boutons-formulaire { display: flex; gap: 8px; margin-top: 4px; }
-.boutons-formulaire button {
-  flex: 1; padding: 12px 8px; border-radius: 8px; border: 1px solid var(--bordure);
-  background: var(--fond); color: var(--texte); font-size: 15px;
+/* Répétition */
+.ligne-champ { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 14px; }
+.ligne-champ > span { width: 82px; font-size: 17px; }
+.ligne-champ select, .ligne-champ input[type="date"] {
+  flex: 1; min-width: 0; height: 40px; padding: 0 10px; border: 0; border-radius: 10px;
+  background: var(--champ); color: var(--texte);
 }
-.boutons-formulaire .principal { background: #3b82f6; border-color: #3b82f6; color: #fff; font-weight: 600; }
-.boutons-formulaire .danger { color: var(--erreur); border-color: var(--erreur); }
-.boutons-formulaire .danger.confirmer { background: var(--erreur); color: #fff; }
+.jours-semaine { display: flex; gap: 6px; justify-content: space-between; padding: 10px 14px; }
+.jours-semaine button {
+  width: 38px; height: 38px; border-radius: 50%; padding: 0; border: 0; font-size: 15px;
+  background: var(--champ); color: var(--texte);
+}
+.jours-semaine button[aria-pressed="true"] { background: var(--actif); color: var(--sur-actif); font-weight: 700; }
+
+/* Une date d'une série : supprimer ou détacher */
+.bloc-occurrence { border-radius: 14px; background: var(--carte); padding: 12px 14px; }
+.bloc-occurrence p { margin: 0 0 10px; font-weight: 600; }
+.boutons-formulaire { display: flex; gap: 8px; }
+.boutons-formulaire button {
+  flex: 1; padding: 11px 8px; border-radius: 12px; border: 0; background: var(--champ); font-size: 15px;
+}
+.boutons-formulaire .danger { color: var(--corail); }
+.danger.confirmer, .danger-large.confirmer { background: var(--corail) !important; color: #FFFFFF !important; }
+.danger-large {
+  height: 48px; border: 0; border-radius: 14px; background: var(--carte); color: var(--corail);
+  font-size: 17px; font-weight: 600;
+}
+
+/* --- Menu calendriers --- */
+dialog.feuille { display: none; flex-direction: column; gap: 12px; }
+dialog.feuille[open] { display: flex; }
+.entete-feuille { display: flex; justify-content: space-between; align-items: center; }
+.entete-feuille h2 { margin: 0; font-size: 20px; }
+.ligne-calendrier { display: flex; align-items: center; gap: 12px; }
+.ligne-calendrier .rond {
+  width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--couleur); box-sizing: border-box;
+  display: flex; align-items: center; justify-content: center; color: var(--texte-pastel); font-size: 13px; font-weight: 800;
+}
+.ligne-calendrier[aria-pressed="true"] .rond { background: var(--couleur); }
+.ligne-calendrier[aria-pressed="false"] { color: var(--discret); }
+
+/* --- Recherche --- */
+#fenetre-recherche { display: none; }
+#fenetre-recherche[open] { display: block; }
+.entete-recherche { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; }
+.champ-recherche {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; height: 46px; padding: 0 14px;
+  border-radius: 999px; background: var(--pilule); color: var(--discret);
+}
+#champ-recherche { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--texte); font-size: 17px; outline: none; }
+#resultats-recherche h3 { font-size: 13px; letter-spacing: 0.4px; text-transform: uppercase; color: var(--discret); margin: 16px 4px 6px; }
+#resultats-recherche .vide { color: var(--discret); margin: 16px 4px; }
+.resultat {
+  display: flex; gap: 12px; align-items: stretch; width: 100%; text-align: left;
+  margin-bottom: 6px; padding: 10px 12px; border: 0; border-radius: 14px;
+  background: var(--carte); color: var(--texte); font-size: 16px; font-weight: 700;
+}
+.resultat .pastille { width: 6px; border-radius: 3px; flex: none; }
+.resultat .details { display: block; color: var(--discret); font-size: 13px; font-weight: 400; margin-top: 2px; }
+.passe { background: transparent; color: var(--discret); font-weight: 600; }
+.passe .pastille { opacity: 0.6; }
 
 /* Message temporaire (ex. « événement récurrent ») en haut de l'écran */
 #message {
   position: fixed; left: 50%; transform: translateX(-50%); z-index: 20;
   top: calc(12px + env(safe-area-inset-top)); width: max-content; max-width: 90vw;
-  margin: 0; padding: 10px 14px; border-radius: 10px; font-size: 14px;
-  background: #1f2937; color: #f9fafb; box-shadow: 0 4px 12px #0006;
+  margin: 0; padding: 10px 14px; border-radius: 12px; font-size: 14px;
+  background: var(--actif); color: var(--sur-actif); box-shadow: var(--ombre);
 }
 
 /* Mode diagnostic (?debug) : journal des gestes en bas de l'écran */
@@ -169,49 +350,3 @@ input, button { font-size: 16px; font-family: inherit; }
   background: #000c; color: #9effa0; font: 11px/1.35 ui-monospace, Menlo, monospace;
   white-space: pre-wrap;
 }
-
-/* --- Répétition --- */
-.ligne-champ { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.ligne-champ > span { width: 82px; }
-.ligne-champ select, .ligne-champ input[type="date"] {
-  flex: 1; min-width: 0; padding: 9px; font-size: 16px; border-radius: 8px;
-  border: 1px solid var(--bordure); background: var(--fond); color: var(--texte); font-family: inherit;
-}
-.jours-semaine { display: flex; gap: 6px; justify-content: space-between; }
-.jours-semaine button {
-  width: 38px; height: 38px; border-radius: 50%; padding: 0; font-size: 15px;
-  border: 1px solid var(--bordure); background: var(--fond); color: var(--texte);
-}
-.jours-semaine button[aria-pressed="true"] { background: #3b82f6; border-color: #3b82f6; color: #fff; font-weight: 600; }
-
-.bloc-occurrence { border: 1px dashed var(--bordure); border-radius: 10px; padding: 10px; }
-.bloc-occurrence p { margin: 0 0 8px; font-weight: 600; }
-
-/* Petite marque 🔁 dans le coin des événements récurrents */
-.marque-serie {
-  position: absolute; top: 1px; right: 3px; font-size: 10px; line-height: 1;
-  opacity: 0.8; pointer-events: none;
-}
-
-/* --- Recherche --- */
-.loupe { font-size: 18px; }
-#fenetre-recherche {
-  width: 100%; max-width: 480px; height: 100dvh; max-height: 100dvh; margin: 0 auto; box-sizing: border-box;
-  border: 0; padding: 12px; padding-top: calc(12px + env(safe-area-inset-top));
-  background: var(--fond); color: var(--texte);
-}
-#fenetre-recherche::backdrop { background: #0008; }
-.entete-recherche { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
-#champ-recherche {
-  flex: 1; min-width: 0; padding: 10px; font-size: 16px; border-radius: 8px;
-  border: 1px solid var(--bordure); background: var(--fond); color: var(--texte);
-}
-#resultats-recherche h3 { font-size: 13px; text-transform: uppercase; color: var(--discret); margin: 14px 0 4px; }
-#resultats-recherche .vide { color: var(--discret); margin-top: 16px; }
-.resultat {
-  display: flex; gap: 10px; align-items: flex-start; width: 100%; text-align: left;
-  padding: 10px 4px; border: 0; border-bottom: 1px solid var(--bordure);
-  background: none; color: var(--texte); font-size: 15px;
-}
-.resultat .pastille { width: 12px; height: 12px; border-radius: 50%; margin-top: 4px; flex: none; }
-.resultat .details { display: block; color: var(--discret); font-size: 13px; margin-top: 2px; }
