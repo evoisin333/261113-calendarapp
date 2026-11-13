@@ -486,7 +486,6 @@ function ouvrirFormulaire(ligne, depart = null) {
   // Les roues ne peuvent être positionnées qu'une fois la fenêtre affichée
   roueDebut.regler(heureDebut);
   roueFin.regler(heureFin);
-  if (!ligne) champTitre.focus();
 }
 
 // Bouton « + » : prochaine heure pleine, aujourd'hui

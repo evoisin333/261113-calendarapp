@@ -47,7 +47,8 @@
   <!-- Formulaire d'un événement (création ou modification) -->
   <dialog id="fenetre-evenement">
     <form id="formulaire-evenement" method="dialog">
-      <h2 id="titre-fenetre">Nouvel événement</h2>
+      <!-- autofocus sur le titre de la fenêtre : sinon le navigateur met le curseur dans le premier champ et le clavier s'ouvre -->
+      <h2 id="titre-fenetre" tabindex="-1" autofocus>Nouvel événement</h2>
       <p id="note-serie" class="note" hidden>🔁 Événement récurrent : les changements s'appliquent à toute la série.</p>
 
       <input id="champ-titre" placeholder="Titre" maxlength="200" autocomplete="off">
