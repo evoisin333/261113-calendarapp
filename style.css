@@ -169,3 +169,26 @@ input, button { font-size: 16px; font-family: inherit; }
   background: #000c; color: #9effa0; font: 11px/1.35 ui-monospace, Menlo, monospace;
   white-space: pre-wrap;
 }
+
+/* --- Répétition --- */
+.ligne-champ { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ligne-champ > span { width: 82px; }
+.ligne-champ select, .ligne-champ input[type="date"] {
+  flex: 1; min-width: 0; padding: 9px; font-size: 16px; border-radius: 8px;
+  border: 1px solid var(--bordure); background: var(--fond); color: var(--texte); font-family: inherit;
+}
+.jours-semaine { display: flex; gap: 6px; justify-content: space-between; }
+.jours-semaine button {
+  width: 38px; height: 38px; border-radius: 50%; padding: 0; font-size: 15px;
+  border: 1px solid var(--bordure); background: var(--fond); color: var(--texte);
+}
+.jours-semaine button[aria-pressed="true"] { background: #3b82f6; border-color: #3b82f6; color: #fff; font-weight: 600; }
+
+.bloc-occurrence { border: 1px dashed var(--bordure); border-radius: 10px; padding: 10px; }
+.bloc-occurrence p { margin: 0 0 8px; font-weight: 600; }
+
+/* Petite marque 🔁 dans le coin des événements récurrents */
+.marque-serie {
+  position: absolute; top: 1px; right: 3px; font-size: 10px; line-height: 1;
+  opacity: 0.8; pointer-events: none;
+}

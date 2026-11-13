@@ -50,7 +50,7 @@
     <form id="formulaire-evenement" method="dialog">
       <!-- autofocus sur le titre de la fenêtre : sinon le navigateur met le curseur dans le premier champ et le clavier s'ouvre -->
       <h2 id="titre-fenetre" tabindex="-1" autofocus>Nouvel événement</h2>
-      <p id="note-serie" class="note" hidden>🔁 Événement récurrent : les changements s'appliquent à toute la série.</p>
+      <p id="note-serie" class="note" hidden>🔁 Événement récurrent : les changements s'appliquent à toute la série (dates et heures de la série, pas de la date touchée).</p>
 
       <input id="champ-titre" placeholder="Titre" maxlength="200" autocomplete="off">
 
@@ -69,6 +69,36 @@
         <span>Fin</span>
         <input type="date" id="champ-date-fin" required>
         <div class="roue-heure" id="roue-fin"></div>
+      </div>
+
+      <!-- Répétition -->
+      <div class="ligne-champ">
+        <span>Répétition</span>
+        <select id="champ-repetition">
+          <option value="">Jamais</option>
+          <option value="DAILY">Chaque jour</option>
+          <option value="WEEKLY">Chaque semaine</option>
+          <option value="MONTHLY">Chaque mois (même date)</option>
+          <option value="YEARLY">Chaque année</option>
+        </select>
+      </div>
+      <div id="jours-semaine" class="jours-semaine" hidden></div>
+      <div id="ligne-fin-repetition" class="ligne-champ" hidden>
+        <span>Fin</span>
+        <select id="champ-fin-repetition">
+          <option value="">Pour toujours</option>
+          <option value="date">Jusqu'au…</option>
+        </select>
+        <input type="date" id="champ-date-fin-repetition" hidden>
+      </div>
+
+      <!-- Actions sur la date touchée (seulement pour une série) -->
+      <div id="bloc-occurrence" class="bloc-occurrence" hidden>
+        <p id="texte-occurrence"></p>
+        <div class="boutons-formulaire">
+          <button type="button" id="bouton-detacher">Détacher cette date</button>
+          <button type="button" id="bouton-supprimer-date" class="danger">Supprimer cette date</button>
+        </div>
       </div>
 
       <input id="champ-lieu" placeholder="Lieu (facultatif)" maxlength="200" autocomplete="off">

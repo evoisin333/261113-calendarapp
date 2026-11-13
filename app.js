@@ -1,6 +1,7 @@
 // app.js — Calendrier partagé
 // 3a : connexion, affichage (jour / semaine / mois), filtres, temps réel.
 // 3b : formulaire (créer, modifier, supprimer), roue horaire.
+// 3c : récurrences (répétition, supprimer ou détacher une seule date).
 // 3e : glisser-déposer (déplacer, changer la durée).
 
 const FUSEAU = "Europe/Brussels";
@@ -263,7 +264,16 @@ function creerCalendrier() {
     // Appui sur un événement : on l'ouvre pour le modifier
     eventClick: (info) => {
       const ligne = ligneDe(info.event);
-      if (ligne) ouvrirFormulaire(ligne);
+      // Pour une série, on retient la date touchée (date locale de cette occurrence)
+      const dateTouchee = heureBruxelles(info.event.start).slice(0, 10);
+      if (ligne) ouvrirFormulaire(ligne, null, ligne.regle_recurrence ? dateTouchee : null);
+    },
+    // Petite marque 🔁 dans le coin des événements récurrents
+    eventDidMount: (info) => {
+      if (!ligneDe(info.event)?.regle_recurrence) return;
+      info.el.style.position = "relative";
+      info.el.append(Object.assign(document.createElement("span"),
+        { className: "marque-serie", textContent: "🔁" }));
     },
   });
   calendrier.render();
@@ -446,13 +456,16 @@ function afficherChoixCalendrier(idChoisi) {
 }
 
 // ligne = événement existant, ou null pour en créer un (avec depart = { date, heure, journeeEntiere })
-function ouvrirFormulaire(ligne, depart = null) {
+// occurrence = date touchée dans une série ("2026-11-17"), sinon null
+function ouvrirFormulaire(ligne, depart = null, occurrence = null) {
   if (calendriers.length === 0) return;
   ligneEnCours = ligne;
+  occurrenceEnCours = occurrence;
+  afficherBlocOccurrence();
   erreurFormulaire.textContent = "";
   boutonSupprimer.hidden = !ligne;
   boutonSupprimer.classList.remove("confirmer");
-  boutonSupprimer.textContent = "Supprimer";
+  boutonSupprimer.textContent = ligne?.regle_recurrence ? "Supprimer la série" : "Supprimer";
   document.getElementById("titre-fenetre").textContent = ligne ? "Modifier" : "Nouvel événement";
   document.getElementById("note-serie").hidden = !ligne?.regle_recurrence;
 
@@ -492,6 +505,7 @@ function ouvrirFormulaire(ligne, depart = null) {
   champDateDebut.value = dateDebut;
   champDateFin.value = dateFin;
   afficherChoixCalendrier(ligne?.calendrier_id ?? calendrierParDefaut);
+  remplirRepetition(ligne?.regle_recurrence ?? null, dateDebut);
 
   fenetre.showModal();
   // Les roues ne peuvent être positionnées qu'une fois la fenêtre affichée
@@ -531,6 +545,10 @@ function lireFormulaire() {
     donnees.fin = versUtc(champDateFin.value, roueFin.lire());
     if (donnees.fin <= donnees.debut) return { erreur: "La fin doit être après le début." };
   }
+  const { regle, erreur } = lireRepetition();
+  if (erreur) return { erreur };
+  donnees.regle_recurrence = regle;
+  if (!regle) donnees.dates_supprimees = [];   // plus de série = plus de dates supprimées
   return { donnees };
 }
 
@@ -662,3 +680,169 @@ function brancherDebugCalendrier() {
     calendrier.on(nom, () => noterDebug(`FullCalendar : ${nom}`));
   }
 }
+
+
+// ---------- Répétition (récurrences) ----------
+
+const champRepetition = document.getElementById("champ-repetition");
+const zoneJours = document.getElementById("jours-semaine");
+const ligneFinRepetition = document.getElementById("ligne-fin-repetition");
+const champFinRepetition = document.getElementById("champ-fin-repetition");
+const champDateFinRepetition = document.getElementById("champ-date-fin-repetition");
+const boutonSupprimerDate = document.getElementById("bouton-supprimer-date");
+const boutonDetacher = document.getElementById("bouton-detacher");
+const JOURS = [["MO", "L"], ["TU", "M"], ["WE", "M"], ["TH", "J"], ["FR", "V"], ["SA", "S"], ["SU", "D"]];
+let occurrenceEnCours = null;   // date touchée dans une série, ex. "2026-11-17"
+
+// "2026-11-17" -> "TU" (code iCalendar du jour de la semaine)
+function codeJour(date) {
+  const [annee, mois, jour] = date.split("-").map(Number);
+  return ["SU", "MO", "TU", "WE", "TH", "FR", "SA"][new Date(Date.UTC(annee, mois - 1, jour)).getUTCDay()];
+}
+
+// Pastilles L M M J V S D (appui = coché / décoché)
+for (const [code, lettre] of JOURS) {
+  const bouton = Object.assign(document.createElement("button"), { type: "button", textContent: lettre });
+  bouton.dataset.jour = code;
+  bouton.setAttribute("aria-pressed", "false");
+  bouton.addEventListener("click", () => {
+    bouton.setAttribute("aria-pressed", String(bouton.getAttribute("aria-pressed") !== "true"));
+  });
+  zoneJours.append(bouton);
+}
+function joursCoches() {
+  return [...zoneJours.children].filter((b) => b.getAttribute("aria-pressed") === "true").map((b) => b.dataset.jour);
+}
+function cocherJours(codes) {
+  for (const bouton of zoneJours.children) bouton.setAttribute("aria-pressed", String(codes.includes(bouton.dataset.jour)));
+}
+
+// Montre seulement ce qui sert pour la répétition choisie
+function majAffichageRepetition() {
+  const frequence = champRepetition.value;
+  zoneJours.hidden = frequence !== "WEEKLY";
+  ligneFinRepetition.hidden = !frequence;
+  champDateFinRepetition.hidden = champFinRepetition.value !== "date";
+  if (frequence === "WEEKLY" && joursCoches().length === 0) cocherJours([codeJour(champDateDebut.value)]);
+}
+champRepetition.addEventListener("change", majAffichageRepetition);
+champFinRepetition.addEventListener("change", () => {
+  if (champFinRepetition.value === "date" && !champDateFinRepetition.value) {
+    champDateFinRepetition.value = champDateDebut.value;
+  }
+  majAffichageRepetition();
+});
+
+// Règle de la base -> formulaire. Ex. "FREQ=WEEKLY;BYDAY=TU,TH;UNTIL=20271231T235959"
+// (une règle écrite à la main avec d'autres options, ex. INTERVAL, perdrait ces options à l'enregistrement)
+function remplirRepetition(regle, dateDebut) {
+  const parties = Object.fromEntries((regle ?? "").split(";").filter(Boolean).map((p) => p.split("=")));
+  champRepetition.value = parties.FREQ ?? "";
+  cocherJours(parties.BYDAY ? parties.BYDAY.split(",") : [codeJour(dateDebut)]);
+  const jusqua = parties.UNTIL
+    ? `${parties.UNTIL.slice(0, 4)}-${parties.UNTIL.slice(4, 6)}-${parties.UNTIL.slice(6, 8)}` : "";
+  champFinRepetition.value = jusqua ? "date" : "";
+  champDateFinRepetition.value = jusqua;
+  majAffichageRepetition();
+}
+
+// Formulaire -> règle pour la base (null = pas de répétition)
+function lireRepetition() {
+  const frequence = champRepetition.value;
+  if (!frequence) return { regle: null };
+  let regle = `FREQ=${frequence}`;
+  if (frequence === "WEEKLY") {
+    const jours = joursCoches();
+    if (jours.length === 0) return { erreur: "Choisis au moins un jour de la semaine." };
+    regle += `;BYDAY=${jours.join(",")}`;
+  }
+  if (champFinRepetition.value === "date") {
+    const jusqua = champDateFinRepetition.value;
+    if (!jusqua) return { erreur: "Choisis la date de fin de la répétition." };
+    if (jusqua < champDateDebut.value) return { erreur: "La répétition se termine avant le début." };
+    // jour de fin inclus : jusqu'à 23:59:59 heure de Bruxelles (ou la date seule en journée entière)
+    const date = jusqua.replaceAll("-", "");
+    regle += champJournee.checked ? `;UNTIL=${date}` : `;UNTIL=${date}T235959`;
+  }
+  return { regle };
+}
+
+
+// ---------- Une seule date d'une série : supprimer ou détacher ----------
+
+// Premier appui : le bouton demande confirmation ; deuxième appui : renvoie true
+function confirmer(bouton, texteConfirmation) {
+  if (bouton.classList.contains("confirmer")) return true;
+  bouton.classList.add("confirmer");
+  bouton.textContent = texteConfirmation;
+  return false;
+}
+
+function afficherBlocOccurrence() {
+  const bloc = document.getElementById("bloc-occurrence");
+  bloc.hidden = !occurrenceEnCours;
+  if (!occurrenceEnCours) return;
+  const [annee, mois, jour] = occurrenceEnCours.split("-").map(Number);
+  const dateLisible = new Intl.DateTimeFormat("fr-BE", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" })
+    .format(new Date(Date.UTC(annee, mois - 1, jour)));
+  document.getElementById("texte-occurrence").textContent = `📅 Date touchée : ${dateLisible}`;
+  boutonSupprimerDate.classList.remove("confirmer");
+  boutonSupprimerDate.textContent = "Supprimer cette date";
+  boutonDetacher.disabled = false;
+}
+
+// Ajoute une date aux dates supprimées de la série
+function avecDateSupprimee(serie, date) {
+  return [...new Set([...(serie.dates_supprimees ?? []), date])].sort();
+}
+
+boutonSupprimerDate.addEventListener("click", async () => {
+  if (!confirmer(boutonSupprimerDate, "Confirmer : seulement cette date")) return;
+  const { error } = await client.from("evenements")
+    .update({ dates_supprimees: avecDateSupprimee(ligneEnCours, occurrenceEnCours) })
+    .eq("id", ligneEnCours.id);
+  if (error) { erreurFormulaire.textContent = `Suppression impossible : ${error.message}`; return; }
+  fenetre.close();
+  chargerEvenements();
+});
+
+// Détacher : la date est retirée de la série et devient un événement à part, prêt à modifier
+boutonDetacher.addEventListener("click", async () => {
+  const serie = ligneEnCours;
+  const date = occurrenceEnCours;
+  const copie = {
+    titre: serie.titre, lieu: serie.lieu, notes: serie.notes,
+    calendrier_id: serie.calendrier_id, journee_entiere: serie.journee_entiere,
+    debut: null, fin: null, date_debut: null, date_fin: null, regle_recurrence: null,
+  };
+  if (serie.journee_entiere) {
+    copie.date_debut = date;
+    copie.date_fin = ajouterJours(date, joursEntre(serie.date_debut, serie.date_fin));
+  } else {
+    copie.debut = versUtc(date, heureBruxelles(serie.debut).slice(11, 16));
+    const duree = Date.parse(serie.fin) - Date.parse(serie.debut);
+    copie.fin = new Date(Date.parse(copie.debut) + duree).toISOString();
+  }
+
+  boutonDetacher.disabled = true;
+  // 1) créer l'événement à part
+  const { data: nouvelle, error } = await client.from("evenements").insert(copie).select().single();
+  if (error) {
+    boutonDetacher.disabled = false;
+    erreurFormulaire.textContent = `Détachement impossible : ${error.message}`;
+    return;
+  }
+  // 2) retirer la date de la série ; si ça échoue, on supprime la copie pour ne pas avoir de doublon
+  const { error: erreurSerie } = await client.from("evenements")
+    .update({ dates_supprimees: avecDateSupprimee(serie, date) }).eq("id", serie.id);
+  if (erreurSerie) {
+    await client.from("evenements").delete().eq("id", nouvelle.id);
+    boutonDetacher.disabled = false;
+    erreurFormulaire.textContent = `Détachement impossible : ${erreurSerie.message}`;
+    return;
+  }
+  fenetre.close();
+  await chargerEvenements();
+  ouvrirFormulaire(nouvelle);
+  afficherMessage("✂️ Date détachée : c'est maintenant un événement à part.");
+});
