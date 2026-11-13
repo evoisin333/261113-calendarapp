@@ -76,7 +76,18 @@ Pour chaque choix : la raison, l'alternative écartée et la limite que ça indu
 - **Vue mois : le rond d'aujourd'hui ne décale plus le numéro ni les événements vers le bas.**
 - **Rotation de l'écran** : la fusion des blocs « Nous » est refaite après chaque changement de taille (l'option `windowResize` n'existe plus dans FullCalendar 7).
 
+## v2 : abonnement dans le Calendrier de l'iPhone (13/11/2026) ✅
+
+- **Lien d'abonnement `.ics` fabriqué par une Edge Function Supabase** (`calendrier-ics`). Raison : une appli web ne peut pas écrire dans le Calendrier de l'iPhone, mais l'iPhone sait s'abonner à un lien `.ics`. Alternative écartée : appli native (payante). Limite : sens unique, lecture seule dans Apple, mise à jour avec du retard.
+- **Trois liens, un par calendrier** (Emma, Mattia, Nous). Raison : dans le Calendrier Apple, la couleur se règle par abonnement. Limite : trois abonnements à ajouter.
+- **Protection par un jeton secret de 64 caractères dans le lien**, rangé dans le schéma privé (invisible pour l'appli et l'API). Vérification JWT de la fonction désactivée, car le Calendrier ne sait pas se connecter. Limite : quiconque a le lien voit les événements → jeton remplaçable par une ligne SQL.
+- **La fonction SQL `flux_ics` fait le tri côté base** : bon jeton d'un membre, à partir d'aujourd'hui, et pour Mattia seulement les créneaux (titre « Mattia », sans lieu ni notes). Raison : ce qui n'est pas envoyé ne peut pas fuiter. Seule l'Edge Function (clé secrète, côté serveur) peut l'appeler.
+- **Jeton seulement pour Emma.** Mattia (Android) n'en a pas besoin pour l'instant.
+- **Heures en Europe/Brussels avec description du fuseau, fin de série convertie en UTC** (exigé par la norme), dates supprimées transmises. Testé : 18h reste 18h après le changement d'heure.
+- **Abonnement rangé dans iCloud** : c'est iCloud qui va chercher les mises à jour, et ça prend très peu de place. Limite : le lien secret est gardé par Apple.
+- **Validé sur l'iPhone** : les 3 calendriers (Emma, Mattia, Nous) apparaissent dans le Calendrier Apple ✅.
+- **Code de la fonction collé à la main dans Supabase** (éditeur du tableau de bord), copie dans `supabase/functions/`. Limite : pas d'historique des versions côté Supabase, il faut recoller après chaque modification.
+
 ## Idées pour la v2 💡
 
-- **Voir nos événements dans le Calendrier Apple** : un lien d'abonnement `.ics` secret, fabriqué par une Edge Function Supabase (gratuit). Limite : sens unique (lecture seule dans Apple), mise à jour avec du retard, et quiconque a le lien voit les événements.
 - **Widget** : impossible pour une appli web (ni iPhone ni Android) ; avec l'abonnement `.ics`, le widget du Calendrier Apple afficherait nos événements. Alternative écartée : appli native (compte développeur Apple payant).
