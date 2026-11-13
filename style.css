@@ -1,0 +1,69 @@
+/* Couleurs de l'appli : clair par défaut, sombre si le téléphone est en mode sombre */
+:root {
+  --fond: #ffffff;
+  --texte: #111827;
+  --discret: #6b7280;
+  --erreur: #dc2626;
+  --bordure: #d1d5db;
+}
+[data-color-scheme="dark"] {
+  --fond: #030712;
+  --texte: #f3f4f6;
+  --discret: #9ca3af;
+  --erreur: #f87171;
+  --bordure: #374151;
+}
+
+[hidden] { display: none !important; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--fond);
+  color: var(--texte);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+/* 16px minimum : sinon Safari iPhone zoome dans le champ */
+input, button { font-size: 16px; font-family: inherit; }
+
+.erreur { color: var(--erreur); margin: 4px 8px; }
+.erreur:empty { display: none; }
+
+/* --- Connexion --- */
+#ecran-connexion { max-width: 340px; margin: 15vh auto 0; padding: 16px; }
+#formulaire-connexion label { display: block; margin-bottom: 14px; }
+#formulaire-connexion input {
+  display: block; width: 100%; box-sizing: border-box; margin-top: 4px; padding: 10px;
+  border: 1px solid var(--bordure); border-radius: 8px; background: var(--fond); color: var(--texte);
+}
+#bouton-connexion {
+  width: 100%; padding: 12px; border: 0; border-radius: 8px;
+  background: #3b82f6; color: #fff; font-weight: 600;
+}
+
+/* --- Appli : prend tout l'écran, en évitant l'encoche de l'iPhone --- */
+#ecran-appli {
+  display: flex; flex-direction: column; height: 100dvh; box-sizing: border-box;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+           env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+.barre { display: flex; align-items: center; gap: 8px; padding: 8px; }
+#filtres { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; }
+
+/* Un bouton par calendrier : plein = affiché, barré = masqué */
+.filtre {
+  border: 2px solid var(--couleur); background: var(--couleur); color: #1f2937;
+  border-radius: 999px; padding: 4px 12px; font-size: 14px;
+}
+.filtre[aria-pressed="false"] {
+  background: transparent; color: var(--discret); text-decoration: line-through;
+}
+
+#etat-synchro { color: var(--discret); font-size: 12px; }
+#etat-synchro.ok { color: #22c55e; }
+#etat-synchro.probleme { color: var(--erreur); }
+
+.discret { background: none; border: 0; color: var(--discret); font-size: 13px; padding: 4px; }
+
+#calendrier { flex: 1; min-height: 0; padding: 0 4px 4px; }
