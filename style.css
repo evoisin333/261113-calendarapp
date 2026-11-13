@@ -151,3 +151,11 @@ input, button { font-size: 16px; font-family: inherit; }
 .boutons-formulaire .principal { background: #3b82f6; border-color: #3b82f6; color: #fff; font-weight: 600; }
 .boutons-formulaire .danger { color: var(--erreur); border-color: var(--erreur); }
 .boutons-formulaire .danger.confirmer { background: var(--erreur); color: #fff; }
+
+/* Message temporaire (ex. « événement récurrent ») en haut de l'écran */
+#message {
+  position: fixed; left: 50%; transform: translateX(-50%); z-index: 20;
+  top: calc(12px + env(safe-area-inset-top)); width: max-content; max-width: 90vw;
+  margin: 0; padding: 10px 14px; border-radius: 10px; font-size: 14px;
+  background: #1f2937; color: #f9fafb; box-shadow: 0 4px 12px #0006;
+}

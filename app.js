@@ -1,6 +1,7 @@
 // app.js — Calendrier partagé
 // 3a : connexion, affichage (jour / semaine / mois), filtres, temps réel.
 // 3b : formulaire (créer, modifier, supprimer), roue horaire.
+// 3e : glisser-déposer (déplacer, changer la durée).
 
 const FUSEAU = "Europe/Brussels";
 const client = supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseCle);
@@ -249,9 +250,19 @@ function creerCalendrier() {
         heureFin: fin.slice(11, 16),
       });
     },
+    // Glisser-déposer : appui long sur un événement, puis glisser (ou tirer son bord du bas)
+    editable: true,
+    eventLongPressDelay: 400,
+    // Interdit : glisser un événement récurrent, ou passer de « journée entière » à une heure
+    eventAllow: (cible, evenement) =>
+      !ligneDe(evenement)?.regle_recurrence && cible.allDay === evenement.allDay,
+    eventDragStart: (info) => prevenirSiRecurrent(info.event),
+    eventResizeStart: (info) => prevenirSiRecurrent(info.event),
+    eventDrop: enregistrerDeplacement,
+    eventResize: enregistrerDeplacement,
     // Appui sur un événement : on l'ouvre pour le modifier
     eventClick: (info) => {
-      const ligne = lignesEvenements.find((l) => String(l.id) === info.event.id);
+      const ligne = ligneDe(info.event);
       if (ligne) ouvrirFormulaire(ligne);
     },
   });
@@ -557,3 +568,56 @@ document.getElementById("formulaire-evenement").addEventListener("submit", (even
   evenement.preventDefault();
   boutonEnregistrer.click();
 });
+
+
+// ---------- Glisser-déposer ----------
+
+// La ligne de la base qui correspond à un événement affiché
+function ligneDe(evenement) {
+  return lignesEvenements.find((l) => String(l.id) === evenement.id);
+}
+
+// Message temporaire en haut de l'écran
+let minuteurMessage;
+function afficherMessage(texte) {
+  const zone = document.getElementById("message");
+  zone.textContent = texte;
+  zone.hidden = false;
+  clearTimeout(minuteurMessage);
+  minuteurMessage = setTimeout(() => { zone.hidden = true; }, 4000);
+}
+
+function prevenirSiRecurrent(evenement) {
+  if (ligneDe(evenement)?.regle_recurrence) {
+    afficherMessage("🔁 Événement récurrent : on ne peut pas le déplacer en le glissant. Touche-le pour le modifier.");
+  }
+}
+
+// Après un déplacement ou un changement de durée : on enregistre la nouvelle position
+async function enregistrerDeplacement(info) {
+  const ligne = ligneDe(info.event);
+  if (!ligne || ligne.regle_recurrence) { info.revert(); return; }
+
+  const { start, end, allDay } = info.event;
+  let donnees;
+  if (allDay) {
+    const dateDebut = heureBruxelles(start).slice(0, 10);
+    // fin exclusive, comme en base ; absente = un seul jour
+    const dateFin = end ? heureBruxelles(end).slice(0, 10) : ajouterJours(dateDebut, 1);
+    donnees = { date_debut: dateDebut, date_fin: dateFin };
+  } else {
+    const dureeAvant = Date.parse(ligne.fin) - Date.parse(ligne.debut);
+    donnees = {
+      debut: start.toISOString(),
+      fin: (end ?? new Date(start.getTime() + dureeAvant)).toISOString(),
+    };
+  }
+
+  const { error } = await client.from("evenements").update(donnees).eq("id", ligne.id);
+  if (error) {
+    info.revert();   // l'événement revient à sa place
+    afficherMessage(`Déplacement impossible : ${error.message}`);
+    return;
+  }
+  chargerEvenements();
+}
