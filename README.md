@@ -42,6 +42,7 @@ Pour changer de version : changer le numéro **et** l'empreinte dans `index.html
 - Dans `config.js`, l'URL doit être l'adresse de base, `https://<id>.supabase.co`, **sans** `/rest/v1` (même si la page Data API de Supabase l'affiche avec). Sinon toutes les requêtes échouent avec l'erreur PGRST125.
 - Après une modification sur GitHub, la mise en ligne prend une à deux minutes (onglet Actions), et l'ancienne version peut rester en cache quelques minutes. Pour être sûr de voir la nouvelle : Ctrl + Maj + R.
 - Le SQL Editor de Supabase ignore la RLS (il tourne en administrateur) : les tests de sécurité se font depuis l'appli, avec un compte normal.
+- **À chaque mise à jour de `app.js`, `style.css` ou `config.js` : changer le numéro `?v=…` dans `index.html`** (aux 3 endroits). Sinon le téléphone peut garder l'ancien fichier en mémoire et mélanger les versions (écran vide).
 - Après une mise à jour sur GitHub, si un téléphone montre encore l'ancienne version : fermer l'onglet (ou l'appli) et la rouvrir.
 - Mode diagnostic : ajouter `?debug` à l'adresse affiche en bas de l'écran le journal des gestes du doigt. À retirer avant la version finale.
 
