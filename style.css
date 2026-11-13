@@ -172,6 +172,7 @@ button:disabled { opacity: 0.4; }
 .mois-case.aujourdhui .mois-numero > [aria-hidden="true"] {
   display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px;
   border-radius: 50%; background: var(--actif); color: var(--sur-actif);
+  margin: -5px 0;   /* le rond déborde sans pousser le numéro ni les événements vers le bas */
 }
 .mois-case.autre-mois .mois-numero { visibility: hidden; }
 .mois-entete { border-color: transparent !important; font-weight: 600; font-size: 13px; }
@@ -196,6 +197,12 @@ button:disabled { opacity: 0.4; }
 
 /* Vues jour et semaine : titre en gras, heure plus petite */
 .titre-evt { font-size: 14px; font-weight: 700; }
+/* Vues jour et semaine : le titre passe à la ligne au lieu d'être coupé.
+   En semaine (colonnes étroites) : plus petit, avec césure des mots (« Den-tiste »). */
+.titre-evt { white-space: normal; overflow-wrap: anywhere; line-height: 1.2; }
+#calendrier.vue-semaine .titre-evt {
+  font-size: 11px; line-height: 1.15; overflow-wrap: break-word; -webkit-hyphens: auto; hyphens: auto;
+}
 .heure-evt { font-size: 12px; font-weight: 500; opacity: 0.8; }
 .evenement-mois .titre-evt { font-size: 12px; }
 

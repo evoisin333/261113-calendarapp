@@ -6,8 +6,6 @@ C'est une appli web installable (PWA), hébergée sur GitHub Pages, avec les don
 ## 📁 Organisation du dépôt
 
 - `index.html`, `app.js`, `style.css` : l'appli (pas d'outil de compilation, les fichiers sont publiés tels quels).
-- `manifest.json`, `icones/` : la fiche d'identité de l'appli installée (nom, icône, couleurs).
-- `sw.js` : le service worker, qui garde une copie des fichiers de l'appli sur le téléphone pour qu'elle s'ouvre sans réseau.
 - `config.js` : l'adresse du projet Supabase et la clé publique (publishable). **Jamais** de clé secrète ici.
 - `sql/` : tous les scripts SQL, numérotés, à lancer dans l'ordre. Chacun peut être relancé sans erreur.
 - `test/recurrence.html` : page de contrôle des récurrences et du changement d'heure (7 lignes vertes attendues).
@@ -45,26 +43,13 @@ Pour changer de version : changer le numéro **et** l'empreinte dans `index.html
 3. Mettre l'URL du projet et la clé publishable dans `config.js`.
 4. Activer GitHub Pages comme ci-dessus.
 
-## 📲 Installer l'appli sur le téléphone
-
-- **iPhone** : ouvrir l'adresse dans **Safari** → bouton Partager → « Sur l'écran d'accueil » → Ajouter.
-- **Android** : ouvrir l'adresse dans **Chrome** → menu ⋮ → « Installer l'appli » (ou « Ajouter à l'écran d'accueil »).
-- Sur iPhone, l'appli installée a ses propres données, séparées de Safari : il faut s'y connecter une fois. Ensuite on reste connecté, et la règle de Safari « données effacées après 7 jours sans visite » ne s'applique pas à l'appli installée.
-
-## 📴 Sans réseau
-
-- L'appli s'ouvre quand même, avec les derniers événements chargés (copie gardée sur le téléphone), en **lecture seule** : bandeau « Hors connexion », pas de création, de modification ni de glisser. La recherche marche.
-- Quand le réseau revient, tout se recharge tout seul.
-- La copie des événements est effacée à la déconnexion.
-
 ## 💡 Bon à savoir
 
 - Dans `config.js`, l'URL doit être l'adresse de base, `https://<id>.supabase.co`, **sans** `/rest/v1` (même si la page Data API de Supabase l'affiche avec). Sinon toutes les requêtes échouent avec l'erreur PGRST125.
 - Après une modification sur GitHub, la mise en ligne prend une à deux minutes (onglet Actions), et l'ancienne version peut rester en cache quelques minutes. Pour être sûr de voir la nouvelle : Ctrl + Maj + R.
 - Le SQL Editor de Supabase ignore la RLS (il tourne en administrateur) : les tests de sécurité se font depuis l'appli, avec un compte normal.
 - **À chaque mise à jour de `app.js`, `style.css` ou `config.js` : changer le numéro `?v=…` dans `index.html`** (aux 3 endroits). Sinon le téléphone peut garder l'ancien fichier en mémoire et mélanger les versions (écran vide).
-- Mises à jour : la page est toujours redemandée au serveur (sauf sans réseau), donc une nouvelle version arrive **à l'ouverture suivante** de l'appli. Si un téléphone montre encore l'ancienne : fermer complètement l'appli (balayer vers le haut) et la rouvrir.
-- `sw.js` n'a pas de numéro de version : il range chaque fichier sous son adresse avec `?v=…` et efface lui-même l'ancienne version.
+- Après une mise à jour sur GitHub, si un téléphone montre encore l'ancienne version : fermer l'onglet (ou l'appli) et la rouvrir.
 - Mode diagnostic : ajouter `?debug` à l'adresse affiche en bas de l'écran le journal des gestes du doigt. À retirer avant la version finale.
 
 ## 👆 Utilisation

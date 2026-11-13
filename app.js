@@ -334,7 +334,7 @@ function creerCalendrier() {
     // Jour et semaine : la bande semaine remplace l'en-tête des colonnes
     views: {
       resourceTimeGridDay: { datesAboveResources: false },
-      timeGridWeek: { dayHeaders: false, displayEventTime: false },   // colonnes étroites : le titre seul
+      timeGridWeek: { dayHeaders: false, displayEventTime: false, slotMinHeight: 28 },   // colonnes étroites : le titre seul ; heures plus hautes (28 px par demi-heure au lieu de 17)
       // eventDisplay "block" : tous les événements en étiquettes pleines (pas de point + heure)
       dayGridMonth: { dayHeaderFormat: { weekday: "narrow" }, fixedWeekCount: false, showNonCurrentDates: false,
                       displayEventTime: false },
@@ -367,6 +367,7 @@ function creerCalendrier() {
     events: (_periode, succes) => succes(evenementsAffiches()),
     datesSet: (info) => {
       ecrireReglage("vue", info.view.type);
+      zoneCalendrier.classList.toggle("vue-semaine", info.view.type === "timeGridWeek");   // titres plus petits (style.css)
       majEntete();
       requestAnimationFrame(fusionnerNous);
     },

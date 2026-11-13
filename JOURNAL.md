@@ -72,6 +72,8 @@ Pour chaque choix : la raison, l'alternative écartée et la limite que ça indu
 - **Les données Supabase ne passent jamais par le service worker.** La copie hors ligne des événements est dans le stockage du téléphone (`localStorage`). Raison : simple, et les droits restent vérifiés par Supabase à chaque échange. Limite vie privée : une copie des événements reste sur le téléphone ; elle est effacée à la déconnexion.
 - **Hors connexion : lecture seule** (bandeau, « + », glisser et « Enregistrer » bloqués), comme prévu au cadrage.
 - **Sans réseau, l'appli s'ouvre tout de suite avec la copie.** Raison : supabase-js réessaie pendant plusieurs secondes (jusqu'à ~30 s pour renouveler une session expirée) avant d'abandonner : sans ça, écran vide. Limite : sur un wifi sans internet, l'appli attend 3 s avant de prendre la copie.
+- **Vue semaine : heures plus hautes** (28 px par demi-heure au lieu de 17, option `slotMinHeight`) et titres sur plusieurs lignes, en plus petit, avec césure des mots. Limite : dans les colonnes étroites, un mot long reste coupé.
+- **Vue mois : le rond d'aujourd'hui ne décale plus le numéro ni les événements vers le bas.**
 - **Rotation de l'écran** : la fusion des blocs « Nous » est refaite après chaque changement de taille (l'option `windowResize` n'existe plus dans FullCalendar 7).
 
 ## Idées pour la v2 💡
