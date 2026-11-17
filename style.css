@@ -1,5 +1,5 @@
-/* Style C : fond gris, blocs pastel pleins, boutons en pilules.
-   Clair par défaut, sombre si le téléphone est en mode sombre. */
+/* Style C : fond gris clair, blocs pastel pleins, boutons en pilules.
+   Toujours clair (choix du 17/11) ; les couleurs sombres ci-dessous ne servent plus. */
 :root {
   --fond: #F4F4F6;
   --carte: #FFFFFF;

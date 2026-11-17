@@ -95,14 +95,9 @@ if ("serviceWorker" in navigator) {
 }
 
 
-// ---------- Thème clair / sombre : suit le réglage du téléphone ----------
+// ---------- Thème : toujours clair (gris clair), même si le téléphone est en mode sombre ----------
 
-const themeSombre = window.matchMedia("(prefers-color-scheme: dark)");
-function appliquerTheme() {
-  document.documentElement.dataset.colorScheme = themeSombre.matches ? "dark" : "light";
-}
-appliquerTheme();
-themeSombre.addEventListener("change", appliquerTheme);
+document.documentElement.dataset.colorScheme = "light";
 
 
 // ---------- Dates : conversion base -> FullCalendar (validée par test/recurrence.html) ----------
