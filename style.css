@@ -414,7 +414,7 @@ dialog.feuille[open] { display: flex; }
 
 /* Liste des dossiers (défile seule, la barre d'onglets reste en bas) */
 .liste-soins { flex: 1; min-height: 0; overflow-y: auto; padding: 6px 14px 16px; display: flex; flex-direction: column; gap: 10px; }
-.carte-soin { border-radius: 16px; background: var(--carte); overflow: hidden; }
+.carte-soin { flex: none; border-radius: 16px; background: var(--carte); overflow: hidden; }   /* flex: none : la carte garde sa taille, c'est la liste qui défile */
 .entete-soin {
   display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px;
   border: 0; background: transparent; color: var(--texte); text-align: left;
