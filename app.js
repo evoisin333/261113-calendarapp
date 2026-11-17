@@ -6,6 +6,7 @@
 // 3e : glisser-déposer (déplacer, changer la durée).
 // 3f : apparence (style C : pilules, bande semaine, menu calendriers, mois sans cases, zoom du mois).
 // 4  : appli installable (service worker) et lecture seule hors connexion.
+// L'onglet Remboursements est dans remboursements.js.
 
 const FUSEAU = "Europe/Brussels";
 // Vue jour : une colonne par calendrier (vue « ressources » de FullCalendar Premium, licence AGPLv3)
@@ -64,7 +65,12 @@ function sauverCopie() {
   ecrireReglage(CLE_COPIE, { calendriers, prenomConnecte, evenements: lignesEvenements, le: Date.now() });
 }
 function lireCopie() { return lireReglage(CLE_COPIE, null); }
-function effacerCopie() { try { localStorage.removeItem(CLE_COPIE); } catch { /* rien à effacer */ } }
+function effacerCopie() {
+  try {
+    localStorage.removeItem(CLE_COPIE);
+    localStorage.removeItem("copieRemboursements");   // copie de l'onglet Remboursements
+  } catch { /* rien à effacer */ }
+}
 function sessionGardee() { try { return localStorage.getItem(CLE_SESSION) !== null; } catch { return false; } }
 
 // Erreur due au réseau ? (Chrome : « Failed to fetch », Safari : « Load failed »)
@@ -233,6 +239,7 @@ function reprendreAvecSession() {
   sansSession = false;
   chargerEvenements();
   ecouterTempsReel();
+  if (typeof demarrerRemboursements === "function") demarrerRemboursements();
 }
 
 function afficherConnexion() {
@@ -281,6 +288,8 @@ async function demarrerAppli() {
   document.getElementById("bouton-ajouter").hidden = calendriers.length === 0;
   creerCalendrier();
   if (horsLigne) appliquerLectureSeule();
+  // Onglet Remboursements (remboursements.js) ; s'il n'est pas encore chargé, il démarre tout seul
+  if (typeof demarrerRemboursements === "function") demarrerRemboursements();
   if (sansSession) return;   // la suite quand le réseau revient (reprendreAvecSession)
   await chargerEvenements();
   ecouterTempsReel();
@@ -296,6 +305,7 @@ function arreterAppli() {
   lignesEvenements = [];
   horsLigne = false;
   bandeauHorsLigne.hidden = true;
+  if (typeof arreterRemboursements === "function") arreterRemboursements();
 }
 
 // Heure de départ de l'affichage en vue jour/semaine : 1 h avant maintenant
@@ -474,6 +484,7 @@ function repasserEnLigne() {
 function appliquerLectureSeule() {
   bandeauHorsLigne.hidden = !horsLigne;
   document.getElementById("bouton-ajouter").classList.toggle("eteint", horsLigne);
+  if (typeof majLectureSeuleSoins === "function") majLectureSeuleSoins();
   if (!calendrier) return;
   calendrier.setOption("selectable", !horsLigne);
   calendrier.setOption("editable", !horsLigne);
@@ -483,7 +494,10 @@ window.addEventListener("offline", () => { if (appliDemarree) passerHorsLigne();
 window.addEventListener("online", () => {
   if (!appliDemarree) return;
   if (sansSession) client.auth.getSession();   // relance le renouvellement de la session
-  else chargerEvenements();
+  else {
+    chargerEvenements();
+    if (typeof chargerRemboursements === "function") chargerRemboursements();
+  }
 });
 
 // Temps réel : à chaque changement, on recharge tout (simple et sûr, validé à l'étape 1)
@@ -501,7 +515,9 @@ function ecouterTempsReel() {
 
 // Retour sur l'appli (le téléphone la met en pause en arrière-plan) : on recharge
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible" && appliDemarree && !sansSession) chargerEvenements();
+  if (document.visibilityState !== "visible" || !appliDemarree || sansSession) return;
+  chargerEvenements();
+  if (typeof chargerRemboursements === "function") chargerRemboursements();
 });
 
 
@@ -1179,7 +1195,7 @@ function majEntete() {
   }
 
   // Bouton de vue actif
-  for (const bouton of document.querySelectorAll(".choix-vue button")) {
+  for (const bouton of document.querySelectorAll(".choix-vue button[data-vue]")) {
     bouton.setAttribute("aria-pressed", String(bouton.dataset.vue === vue));
   }
 }
@@ -1190,7 +1206,7 @@ document.getElementById("bouton-aujourdhui").addEventListener("click", () => {
   calendrier?.today();
   calendrier?.scrollToTime(heureDeDepart());
 });
-for (const bouton of document.querySelectorAll(".choix-vue button")) {
+for (const bouton of document.querySelectorAll(".choix-vue button[data-vue]")) {
   bouton.addEventListener("click", () => calendrier?.changeView(bouton.dataset.vue));
 }
 

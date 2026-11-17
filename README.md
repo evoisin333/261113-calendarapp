@@ -6,7 +6,8 @@ C'est une appli web installable (PWA), hébergée sur GitHub Pages, avec les don
 
 ## 📁 Organisation du dépôt
 
-- `index.html`, `app.js`, `style.css` : l'appli (pas d'outil de compilation, les fichiers sont publiés tels quels).
+- `index.html`, `app.js`, `style.css` : l'appli et l'onglet Calendrier (pas d'outil de compilation, les fichiers sont publiés tels quels).
+- `remboursements.js` : l'onglet Remboursements (mutuelle et DKV). Un fichier par onglet.
 - `manifest.json`, `icones/` : la fiche d'identité de l'appli installée (nom, icône, couleurs). Les PNG sont fabriqués à partir de `icones/icone.svg` (et `icone-masquable.svg` pour les icônes rondes d'Android).
 - `sw.js` : le service worker, qui garde une copie des fichiers de l'appli sur le téléphone pour qu'elle s'ouvre sans réseau.
 - `config.js` : l'adresse du projet Supabase et la clé publique (publishable). **Jamais** de clé secrète ici.
@@ -92,3 +93,13 @@ Pour changer de version : changer le numéro **et** l'empreinte dans `index.html
 - Une seule date d'une série : la toucher, puis « Supprimer cette date » ou « Détacher cette date ».
 - Rechercher : la loupe 🔍 (titre, lieu, notes ; sans accents ni majuscules).
 - Masquer un calendrier, se déconnecter : le menu (icône à gauche de la loupe).
+
+### 🩺 Onglet Remboursements
+
+- **+** : un rendez-vous simple (date, montant payé, mutuelle déjà retirée ou pas), ou une prescription avec **plusieurs séances** (kiné…) et le nombre de séances prévues.
+- **+ Séance** sous une prescription : ajoute une séance avec le même prix que la précédente.
+- Toucher une séance : cocher les étapes (envoyé / remboursé, mutuelle / DKV). La date du jour se met toute seule ; le montant remboursé est facultatif.
+- **Sélectionner** : cocher plusieurs séances, puis « Envoyé mutuelle », « Remboursé DKV »… Un total remboursé est réparti à parts égales.
+- Toucher le nom d'un soin : modifier, ajouter des **photos des documents** (attestation, facture, décompte), tout supprimer. Quand tout est remboursé, « Supprimer les documents » libère la place.
+- **À faire** montre seulement ce qui reste à envoyer ou à recevoir ; **Tout** montre aussi ce qui est terminé.
+- Puces : orange = à envoyer, bleu = envoyé (on attend), vert = fait. « DKV après » = la mutuelle d'abord.

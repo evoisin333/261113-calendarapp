@@ -109,6 +109,18 @@ Pour chaque choix : la raison, l'alternative écartée et la limite que ça indu
 - **Photos des documents dans un espace Supabase privé** (`documents-soins`) : 5 Mo maximum par fichier, images ou PDF, seulement dans le dossier d'un soin qui existe. Raison : garder l'attestation et le décompte jusqu'au remboursement. Limite : l'offre gratuite a 1 Go pour les fichiers, d'où la compression des photos et le bouton pour les supprimer une fois tout remboursé.
 - **Région du projet Supabase : en Europe** (vérifié), important pour des données de santé.
 
+## Remboursements : l'onglet (17/11/2026)
+
+- **Fichier à part `remboursements.js`**, branché sur le démarrage, la déconnexion, le hors connexion et le temps réel de `app.js`. Raison : `app.js` reste lisible, un fichier par onglet.
+- **Rendez-vous simple encodé en un seul formulaire** (soin, pour qui, date, montant, mutuelle retirée). Après l'enregistrement, le dossier reste ouvert pour ajouter tout de suite les photos.
+- **+ Séance reprend le prix et le réglage « mutuelle retirée » de la séance précédente.**
+- **Étapes à cocher, date du jour automatique et modifiable.** Mutuelle retirée sur place : les étapes mutuelle disparaissent. La DKV est marquée « après » tant que la mutuelle n'est pas faite (elle demande le décompte de la mutuelle).
+- **Envoi groupé : « Sélectionner », cocher, choisir l'action.** Un montant total est réparti à parts égales au centime près. Limite : si les séances n'ont pas été remboursées pareil, il faut corriger séance par séance.
+- **Résumé « À envoyer » et « En attente »** compté séance par séance. Le reste à charge s'affiche quand les montants remboursés sont connus.
+- **Photos réduites à 1 600 px en JPEG avant l'envoi** (≈ 300 Ko), PDF acceptés tels quels (5 Mo max). Liens d'affichage valables 1 h. Supprimer un soin supprime d'abord ses documents.
+- **Hors connexion : lecture seule, avec une copie sur le téléphone** (effacée à la déconnexion). Les photos ne sont pas copiées.
+- **Correction** : les boutons du calendrier ne réagissent plus aux boutons « À faire / Tout » (même style, rôle différent).
+
 ## Idées pour la v2 💡
 
 - **Widget** : impossible pour une appli web (ni iPhone ni Android) ; avec l'abonnement `.ics`, le widget du Calendrier Apple afficherait nos événements. Alternative écartée : appli native (compte développeur Apple payant).
