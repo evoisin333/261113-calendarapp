@@ -1326,7 +1326,7 @@ function remettreCopie(support) {
     support.style.width = support.dataset.largeurOrigine;
     delete support.dataset.largeurOrigine;
   }
-  support.style.visibility = "";
+  support.querySelector("[data-id-evenement]")?.classList.remove("copie-cachee");
 }
 
 // Rotation du téléphone / changement de taille : FullCalendar redessine, on refusionne ensuite
@@ -1350,22 +1350,50 @@ function fusionnerNous() {
     paire.sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
     const [gauche, droite] = paire;
     const ecart = droite.getBoundingClientRect().left - gauche.getBoundingClientRect().left;
+    // En pourcentage de la colonne (+ l'épaisseur du trait entre les colonnes) :
+    // reste juste si FullCalendar redessine à une autre taille (onglet, rotation).
+    const colonne = droite.offsetParent?.getBoundingClientRect().width || ecart;
+    const trait = Math.max(0, Math.round((ecart - colonne) * 10) / 10);
+    // On cache la copie inutile par une classe sur l'événement : FullCalendar
+    // réécrit lui-même la « visibility » de ses supports quand il remesure.
+    const cacher = (support) => support.querySelector("[data-id-evenement]").classList.add("copie-cachee");
 
     if (gauche.style.width === "100%" && droite.style.width === "100%") {
       // Ligne « Journée » : la copie de gauche s'élargit sur les deux colonnes
       gauche.dataset.largeurOrigine = gauche.style.width;
-      gauche.style.width = `calc(100% + ${ecart}px)`;
-      droite.style.visibility = "hidden";
+      gauche.style.width = `calc(200% + ${trait}px)`;
+      cacher(droite);
     } else if (gauche.style.insetInline === "0%" && droite.style.insetInline === "0%") {
       // Grille des heures : la copie de droite s'étire vers la gauche (elle passe ainsi
       // par-dessus la colonne de gauche et son trait de séparation)
       droite.dataset.margeOrigine = droite.style.marginInlineStart;
-      droite.style.marginInlineStart = `${-ecart}px`;
-      gauche.style.visibility = "hidden";
+      droite.style.marginInlineStart = `calc(-100% - ${trait}px)`;
+      cacher(gauche);
     }
   }
 }
 
+
+// ---------- Onglets (Calendrier, Remboursements…) ----------
+// Le dernier onglet ouvert est gardé sur le téléphone.
+const ONGLETS = ["calendrier", "remboursements"];
+const boutonsOnglets = document.querySelectorAll(".barre-onglets button");
+
+function afficherOnglet(nom) {
+  if (!ONGLETS.includes(nom)) nom = "calendrier";
+  for (const onglet of ONGLETS) document.getElementById(`onglet-${onglet}`).hidden = onglet !== nom;
+  for (const bouton of boutonsOnglets) {
+    if (bouton.dataset.onglet === nom) bouton.setAttribute("aria-current", "page");
+    else bouton.removeAttribute("aria-current");
+  }
+  ecrireReglage("onglet", nom);
+  // Retour au calendrier : FullCalendar se redessine à la bonne taille, on refusionne les blocs « Nous »
+  if (nom === "calendrier") setTimeout(fusionnerNous, 150);
+}
+for (const bouton of boutonsOnglets) {
+  bouton.addEventListener("click", () => afficherOnglet(bouton.dataset.onglet));
+}
+afficherOnglet(lireReglage("onglet", "calendrier"));
 
 // ---------- Lancement sans réseau ----------
 // Sans réseau, Supabase réessaie de renouveler la session pendant jusqu'à ~30 s avant de répondre.

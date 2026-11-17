@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#FFE9DD"/>
+  <g transform="translate(0,-14)">
+  <!-- Boule kawaii : gros corps rond, petite tête -->
+  <ellipse cx="256" cy="400" rx="170" ry="28" fill="#F6D2BE"/>
+  <path d="M374 330 C 440 330, 450 250, 404 236" fill="none" stroke="#F08A3E" stroke-width="34" stroke-linecap="round"/>
+  <circle cx="256" cy="282" r="128" fill="#F7A05A"/>
+  <path d="M168 214 L 160 132 L 222 170 Z" fill="#F7A05A" stroke="#F7A05A" stroke-width="20" stroke-linejoin="round"/>
+  <path d="M290 170 L 352 132 L 344 214 Z" fill="#F7A05A" stroke="#F7A05A" stroke-width="20" stroke-linejoin="round"/>
+  <path d="M176 196 L 172 152 L 206 174 Z" fill="#FFC2B0"/>
+  <path d="M306 174 L 340 152 L 336 196 Z" fill="#FFC2B0"/>
+  <path d="M236 160 L 240 186 M 256 156 L 256 184 M 276 160 L 272 186" stroke="#E07B30" stroke-width="10" stroke-linecap="round"/>
+  <path d="M196 262 C 206 276, 224 276, 234 262" fill="none" stroke="#5B3423" stroke-width="9" stroke-linecap="round"/>
+  <path d="M278 262 C 288 276, 306 276, 316 262" fill="none" stroke="#5B3423" stroke-width="9" stroke-linecap="round"/>
+  <path d="M248 290 L 264 290 L 256 299 Z" fill="#E8707A" stroke="#E8707A" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M256 299 C 256 309, 246 312, 240 306 M256 299 C 256 309, 266 312, 272 306" fill="none" stroke="#5B3423" stroke-width="5" stroke-linecap="round"/>
+  <ellipse cx="186" cy="294" rx="18" ry="11" fill="#FFAE9E"/>
+  <ellipse cx="326" cy="294" rx="18" ry="11" fill="#FFAE9E"/>
+  <ellipse cx="214" cy="392" rx="34" ry="20" fill="#FFF4EA"/>
+  <ellipse cx="298" cy="392" rx="34" ry="20" fill="#FFF4EA"/>
+  </g>
+</svg>

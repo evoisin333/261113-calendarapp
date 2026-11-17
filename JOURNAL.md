@@ -65,7 +65,7 @@ Pour chaque choix : la raison, l'alternative écartée et la limite que ça indu
 - **Rebond et « retour arrière » du navigateur bloqués** (`overscroll-behavior: none`).
 - **Numéro de version `?v=` sur les fichiers dans `index.html`.** Raison : sans ça, les téléphones gardaient l'ancien `style.css` ou `app.js` en mémoire et l'appli s'affichait cassée. Limite : il faut changer ce numéro à chaque mise à jour.
 
-## Étape 4 : appli installable et hors connexion (13/11/2026)
+## Étape 4 : appli installable et hors connexion (13/11/2026) ✅
 
 - **Appli installable (PWA)** : `manifest.json` (nom « Nous deux », plein écran), icônes PNG (trois ronds pastel sur fond gris foncé), dont une version « masquable » pour les icônes rondes d'Android et une 180 px pour l'iPhone.
 - **Service worker `sw.js`** : la page est toujours redemandée au serveur (copie seulement sans réseau ou après 4 s d'attente) ; les fichiers avec numéro `?v=` et les bibliothèques sont pris dans la copie. Raison : l'appli s'ouvre sans réseau et les mises à jour arrivent seules à l'ouverture suivante. Alternative écartée : un bandeau « Nouvelle version, toucher pour recharger ». Limite : la nouvelle version n'apparaît qu'à la 2e ouverture si le réseau est très lent.
@@ -87,6 +87,27 @@ Pour chaque choix : la raison, l'alternative écartée et la limite que ça indu
 - **Abonnement rangé dans iCloud** : c'est iCloud qui va chercher les mises à jour, et ça prend très peu de place. Limite : le lien secret est gardé par Apple.
 - **Validé sur l'iPhone** : les 3 calendriers (Emma, Mattia, Nous) apparaissent dans le Calendrier Apple ✅.
 - **Code de la fonction collé à la main dans Supabase** (éditeur du tableau de bord), copie dans `supabase/functions/`. Limite : pas d'historique des versions côté Supabase, il faut recoller après chaque modification.
+
+## Tests finaux (13/11/2026)
+
+- **Security Advisor de Supabase : 0 erreur.** Un seul avertissement, « Leaked password protection », qui n'est disponible qu'en offre Pro. Accepté : les inscriptions sont fermées et les deux mots de passe ont été choisis à la main. Limite : personne ne vérifie automatiquement si ces mots de passe ont fuité.
+- **Sauvegarde** : l'offre gratuite n'en fait pas ; export CSV de `evenements` à la main de temps en temps (Table Editor).
+
+## v2 : Ensemble, une appli à onglets (17/11/2026)
+
+- **L'appli devient « Ensemble »** : gestion de la vie ensemble, avec un onglet par besoin. Le calendrier devient le premier onglet. Raison : une seule appli à installer et une seule connexion. Alternative écartée : une appli séparée par besoin. Limite : `app.js` grossit, donc chaque nouvel onglet a son propre fichier.
+- **Nouvelle icône : un chat orange tout rond qui dort**, fond pêche. Choisi parmi plusieurs dessins.
+- **Adresse et dépôt inchangés** (`261113-calendarapp`). Raison : l'appli installée et les liens restent valides. Limite : sur iPhone, le nouveau nom et la nouvelle icône n'apparaissent qu'après avoir supprimé l'icône de l'écran d'accueil et réinstallé l'appli.
+- **Barre d'onglets en bas** (Calendrier, Remboursements). Le dernier onglet ouvert est gardé sur le téléphone.
+- **Correction : le bloc « Nous » en vue jour** se cale maintenant en pourcentage de la colonne, et la copie en double est cachée par une classe. Raison : quand FullCalendar redessinait (changement d'onglet ou de vue), le bloc pouvait se décaler ou apparaître en double.
+
+## Remboursements : la base (17/11/2026) ✅
+
+- **Un dossier par soin, une ligne par séance** (`sql/06_remboursements.sql`). Un rendez-vous simple = un dossier avec une séance ; une prescription kiné = un dossier avec les séances prévues et une ligne par séance faite. Raison : pouvoir envoyer et suivre les séances une par une ou par petits groupes. Alternative écartée : une seule ligne par prescription (impossible de savoir quelles séances ont été envoyées).
+- **Chaque étape est une date** (envoyé mutuelle, remboursé mutuelle, envoyé DKV, remboursé DKV) : vide = pas encore fait. Montants remboursés facultatifs.
+- **Visible par vous deux**, avec un champ « Pour qui ». Même règle que le calendrier (membres seulement), testée avec les 3 comptes.
+- **Photos des documents dans un espace Supabase privé** (`documents-soins`) : 5 Mo maximum par fichier, images ou PDF, seulement dans le dossier d'un soin qui existe. Raison : garder l'attestation et le décompte jusqu'au remboursement. Limite : l'offre gratuite a 1 Go pour les fichiers, d'où la compression des photos et le bouton pour les supprimer une fois tout remboursé.
+- **Région du projet Supabase : en Europe** (vérifié), important pour des données de santé.
 
 ## Idées pour la v2 💡
 

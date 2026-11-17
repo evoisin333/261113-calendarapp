@@ -126,8 +126,29 @@ button:disabled { opacity: 0.4; }
 .bande-semaine.vue-semaine { margin-left: 52px; margin-right: 6px; padding: 6px 2px; gap: 2px; }
 .bande-semaine.vue-semaine button { height: 50px; }
 
+/* Bloc « Nous » en vue jour : la copie en double est cachée (voir fusionnerNous dans app.js) */
+.copie-cachee { visibility: hidden; }
+
+/* ---------- Onglets ---------- */
+/* Chaque onglet prend toute la hauteur disponible au-dessus de la barre d'onglets */
+.onglet { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.onglet[hidden] { display: none; }
+.titre-onglet { margin: 16px 0 0; padding: 0 20px; font-size: 34px; font-weight: 800; letter-spacing: -0.5px; line-height: 1.1; }
+.vide-onglet { margin: 24px 20px; color: var(--discret); }
+
+.barre-onglets {
+  display: flex; justify-content: space-around; padding: 6px 8px 4px;
+  border-top: 1px solid var(--pilule-bord); background: var(--fond);
+}
+.barre-onglets button {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 4px 0; border: 0; background: transparent; color: var(--discret);
+  font-size: 11px; font-weight: 600;
+}
+.barre-onglets button[aria-current="page"] { color: var(--texte); }
+
 /* Barre du bas : Aujourd'hui + choix de la vue */
-.barre-bas { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px 12px; }
+.barre-bas { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px 8px; }
 .pilule-texte { height: 50px; padding: 0 20px; align-items: center; justify-content: center; color: var(--texte); font-size: 16px; font-weight: 600; border-radius: 999px; }
 .choix-vue button {
   height: 40px; padding: 0 14px; border: 0; border-radius: 999px; background: transparent;

@@ -1,12 +1,16 @@
-# 📅 Calendrier partagé
+# 🐱 Ensemble
 
-Une appli de calendrier pour nous deux : gratuite, sans pub, sur iPhone et Android.
+Une appli pour gérer la vie ensemble : gratuite, sans pub, sur iPhone et Android.
+Un onglet par besoin : 📅 Calendrier, 🩺 Remboursements (mutuelle et DKV), et d'autres à venir.
 C'est une appli web installable (PWA), hébergée sur GitHub Pages, avec les données dans Supabase.
 
 ## 📁 Organisation du dépôt
 
 - `index.html`, `app.js`, `style.css` : l'appli (pas d'outil de compilation, les fichiers sont publiés tels quels).
+- `manifest.json`, `icones/` : la fiche d'identité de l'appli installée (nom, icône, couleurs). Les PNG sont fabriqués à partir de `icones/icone.svg` (et `icone-masquable.svg` pour les icônes rondes d'Android).
+- `sw.js` : le service worker, qui garde une copie des fichiers de l'appli sur le téléphone pour qu'elle s'ouvre sans réseau.
 - `config.js` : l'adresse du projet Supabase et la clé publique (publishable). **Jamais** de clé secrète ici.
+- `supabase/functions/calendrier-ics/index.ts` : l'Edge Function qui fabrique les liens d'abonnement `.ics` pour le Calendrier de l'iPhone. Copie de ce qui est déployé dans Supabase (à recoller à la main après chaque modification).
 - `sql/` : tous les scripts SQL, numérotés, à lancer dans l'ordre. Chacun peut être relancé sans erreur.
 - `test/recurrence.html` : page de contrôle des récurrences et du changement d'heure (7 lignes vertes attendues).
 - `JOURNAL.md` : les décisions prises, avec leurs raisons et leurs limites.
@@ -35,6 +39,8 @@ Pour changer de version : changer le numéro **et** l'empreinte dans `index.html
 - Integrations → Data API : « Automatically expose new tables » **désactivé** (les accès sont donnés par `grant` dans les scripts).
 - Authentication → Users → Add user → Create new user : 3 comptes créés à la main (Emma, Mattia, compte de test), avec « Auto Confirm User » coché.
 - Authentication → Sign In / Providers : « Allow new users to sign up » **désactivé** (inscriptions fermées).
+- Edge Functions → Deploy a new function → Via Editor : fonction **`calendrier-ics`**, code collé depuis `supabase/functions/calendrier-ics/index.ts`.
+- Edge Functions → `calendrier-ics` → onglet des détails : vérification JWT (« Verify JWT ») **désactivée**. Le Calendrier de l'iPhone ne sait pas se connecter : c'est le jeton secret du lien qui protège.
 
 ## 🚀 Tout réinstaller depuis zéro
 
@@ -43,13 +49,36 @@ Pour changer de version : changer le numéro **et** l'empreinte dans `index.html
 3. Mettre l'URL du projet et la clé publishable dans `config.js`.
 4. Activer GitHub Pages comme ci-dessus.
 
+## 📲 Installer l'appli sur le téléphone
+
+- **iPhone** : ouvrir l'adresse dans **Safari** → bouton Partager → « Sur l'écran d'accueil » → Ajouter.
+- **Android** : ouvrir l'adresse dans **Chrome** → menu ⋮ → « Installer l'appli » (ou « Ajouter à l'écran d'accueil »).
+- Sur iPhone, l'appli installée a ses propres données, séparées de Safari : il faut s'y connecter une fois. Ensuite on reste connecté, et la règle de Safari « données effacées après 7 jours sans visite » ne s'applique pas à l'appli installée.
+
+## 📴 Sans réseau
+
+- L'appli s'ouvre quand même, avec les derniers événements chargés (copie gardée sur le téléphone), en **lecture seule** : bandeau « Hors connexion », pas de création, de modification ni de glisser. La recherche marche.
+- Quand le réseau revient, tout se recharge tout seul.
+- La copie des événements est effacée à la déconnexion.
+
+## 📅 Abonnement dans le Calendrier de l'iPhone
+
+- Trois liens secrets, un par calendrier (couleurs réglées dans l'app Calendrier) :
+  `https://npcopdfvmtfjcygifree.supabase.co/functions/v1/calendrier-ics?jeton=<JETON>&calendrier=1` (1 = Emma, 2 = Mattia, 3 = Nous).
+- Le jeton s'affiche à la fin de `sql/05_flux_ics.sql`. **Il ne va jamais dans le dépôt** : quiconque a le lien voit les événements.
+- Sur l'iPhone : Calendrier → Calendriers → Ajouter un calendrier → Ajouter un calendrier avec abonnement → coller le lien → nom, couleur, compte iCloud.
+- Contenu : à partir d'aujourd'hui ; tout pour Emma et Nous ; pour Mattia, seulement les créneaux (titre « Mattia », sans lieu ni notes).
+- Sens unique et lecture seule ; mise à jour quand l'iPhone (ou iCloud) le décide, pas en direct.
+- Lien qui a fuité : dans `05_flux_ics.sql`, lancer la ligne `update … set jeton = default`, puis se réabonner avec le nouveau lien (l'ancien ne renvoie plus rien).
+
 ## 💡 Bon à savoir
 
 - Dans `config.js`, l'URL doit être l'adresse de base, `https://<id>.supabase.co`, **sans** `/rest/v1` (même si la page Data API de Supabase l'affiche avec). Sinon toutes les requêtes échouent avec l'erreur PGRST125.
 - Après une modification sur GitHub, la mise en ligne prend une à deux minutes (onglet Actions), et l'ancienne version peut rester en cache quelques minutes. Pour être sûr de voir la nouvelle : Ctrl + Maj + R.
 - Le SQL Editor de Supabase ignore la RLS (il tourne en administrateur) : les tests de sécurité se font depuis l'appli, avec un compte normal.
 - **À chaque mise à jour de `app.js`, `style.css` ou `config.js` : changer le numéro `?v=…` dans `index.html`** (aux 3 endroits). Sinon le téléphone peut garder l'ancien fichier en mémoire et mélanger les versions (écran vide).
-- Après une mise à jour sur GitHub, si un téléphone montre encore l'ancienne version : fermer l'onglet (ou l'appli) et la rouvrir.
+- Mises à jour : la page est toujours redemandée au serveur (sauf sans réseau), donc une nouvelle version arrive **à l'ouverture suivante** de l'appli. Si un téléphone montre encore l'ancienne : fermer complètement l'appli (balayer vers le haut) et la rouvrir.
+- `sw.js` n'a pas de numéro de version : il range chaque fichier sous son adresse avec `?v=…` et efface lui-même l'ancienne version.
 - Mode diagnostic : ajouter `?debug` à l'adresse affiche en bas de l'écran le journal des gestes du doigt. À retirer avant la version finale.
 
 ## 👆 Utilisation

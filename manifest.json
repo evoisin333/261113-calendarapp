@@ -1,12 +1,12 @@
 {
   "id": "./",
-  "name": "Nous deux",
-  "short_name": "Nous deux",
+  "name": "Ensemble",
+  "short_name": "Ensemble",
   "lang": "fr",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#15161A",
+  "background_color": "#FFE9DD",
   "theme_color": "#15161A",
   "icons": [
     { "src": "icones/icone-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
