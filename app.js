@@ -12,7 +12,11 @@ const FUSEAU = "Europe/Brussels";
 // Vue jour : une colonne par calendrier (vue « ressources » de FullCalendar Premium, licence AGPLv3)
 const VUE_JOUR = "resourceTimeGridDay";
 // Le calendrier « Nous » n'a pas de colonne : ses événements remplissent les colonnes Emma et Mattia
-const ID_NOUS = 3;   // fixé par sql/02_base.sql
+const ID_NOUS = 3;            // fixé par sql/02_base.sql
+const ID_ANNIVERSAIRES = 4;   // fixé par sql/07_anniversaires.sql
+// Calendriers communs (Nous, Anniversaires) : pas de colonne à eux en vue jour,
+// leurs événements s'étalent sur les colonnes Emma et Mattia
+function estCommun(idCalendrier) { return idCalendrier === ID_NOUS || idCalendrier === ID_ANNIVERSAIRES; }
 const client = supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseCle);
 
 const ecranConnexion = document.getElementById("ecran-connexion");
@@ -118,9 +122,9 @@ function versFullCalendar(ligne) {
     title: ligne.titre,
     color: couleur,
     contrastColor: "#1f2937",   // texte foncé sur les couleurs pastel
-    // sa colonne en vue jour (« Nous » : les deux colonnes)
-    resourceIds: ligne.calendrier_id === ID_NOUS
-      ? calendriers.filter((c) => c.id !== ID_NOUS).map((c) => String(c.id))
+    // sa colonne en vue jour (calendrier commun : les deux colonnes)
+    resourceIds: estCommun(ligne.calendrier_id)
+      ? calendriers.filter((c) => !estCommun(c.id)).map((c) => String(c.id))
       : [String(ligne.calendrier_id)],
   };
 
@@ -319,7 +323,7 @@ function creerCalendrier() {
     schedulerLicenseKey: "AGPL-My-Frontend-And-Backend-Are-Open-Source",
     // Colonnes de la vue jour : Emma et Mattia (si affichés). Pas de colonne « Nous ».
     resources: (_info, succes) => succes(calendriers
-      .filter((c) => c.id !== ID_NOUS && !calendriersMasques.has(c.id))
+      .filter((c) => !estCommun(c.id) && !calendriersMasques.has(c.id))
       .map((c) => ({ id: String(c.id), title: c.nom, extendedProps: { couleur: c.couleur } }))),
     resourceOrder: "id",
     resourceDayHeaderClass: "entete-colonne",
@@ -633,6 +637,20 @@ function afficherChoixCalendrier(idChoisi) {
   }
 }
 
+// Calendrier « Anniversaires » choisi : journée entière, chaque année (modifiable ensuite)
+document.getElementById("choix-calendrier").addEventListener("change", (evenement) => {
+  if (Number(evenement.target.value) !== ID_ANNIVERSAIRES) return;
+  if (!champJournee.checked) {
+    champJournee.checked = true;
+    champJournee.dispatchEvent(new Event("change"));
+  }
+  if (champRepetition.value !== "YEARLY") {
+    champRepetition.value = "YEARLY";
+    champFinRepetition.value = "";
+    majAffichageRepetition();
+  }
+});
+
 // ligne = événement existant, ou null pour en créer un (avec depart = { date, heure, journeeEntiere })
 // occurrence = date touchée dans une série ("2026-11-17"), sinon null
 function ouvrirFormulaire(ligne, depart = null, occurrence = null) {
@@ -818,7 +836,7 @@ async function enregistrerDeplacement(info) {
   }
 
   // Autre colonne = autre calendrier (Emma <-> Mattia). Un événement « Nous » reste « Nous ».
-  if (info.newResource && ligne.calendrier_id !== ID_NOUS) donnees.calendrier_id = Number(info.newResource.id);
+  if (info.newResource && !estCommun(ligne.calendrier_id)) donnees.calendrier_id = Number(info.newResource.id);
 
   const { error } = await client.from("evenements").update(donnees).eq("id", ligne.id);
   if (error) {
@@ -939,6 +957,8 @@ function lireRepetition() {
   const frequence = champRepetition.value;
   if (!frequence) return { regle: null };
   let regle = `FREQ=${frequence}`;
+  // Né un 29 février : le dernier jour de février chaque année (le 28 hors années bissextiles)
+  if (frequence === "YEARLY" && champDateDebut.value.endsWith("-02-29")) regle += ";BYMONTH=2;BYMONTHDAY=-1";
   if (frequence === "WEEKLY") {
     const jours = joursCoches();
     if (jours.length === 0) return { erreur: "Choisis au moins un jour de la semaine." };
@@ -1352,7 +1372,7 @@ function fusionnerNous() {
     remettreCopie(support);
     if (calendrier.view.type !== VUE_JOUR) continue;
     const ligne = lignesEvenements.find((l) => String(l.id) === el.dataset.idEvenement);
-    if (ligne?.calendrier_id !== ID_NOUS) continue;
+    if (!estCommun(ligne?.calendrier_id)) continue;
     const cle = `${el.dataset.idEvenement}|${support.style.top}`;
     (copies[cle] ??= []).push(support);
   }

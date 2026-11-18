@@ -127,6 +127,13 @@ Pour chaque choix : la raison, l'alternative écartée et la limite que ça indu
 - **Thème toujours clair (gris clair)**, même si le téléphone est en mode sombre (17/11). Raison : préférence d'apparence. Limite : écran lumineux le soir.
 - **Correction : la liste des remboursements défile** (les cartes étaient écrasées pour tenir dans l'écran).
 
+## Calendrier : anniversaires (18/11/2026)
+
+- **4e calendrier « Anniversaires », jaune pastel** (`sql/07_anniversaires.sql`), commun à nous deux, masquable dans le menu. En vue jour, un anniversaire s'étale sur les colonnes Emma et Mattia, comme « Nous ». Raison : les retrouver d'un coup d'œil et pouvoir les cacher. Alternative écartée : un anniversaire = un événement « Nous » qui se répète.
+- **Choisir « Anniversaires » coche « journée entière » et « chaque année »** (modifiable ensuite).
+- **Pas d'âge affiché** (pas d'année de naissance) et **pas dans l'abonnement du Calendrier de l'iPhone** (choix d'Emma).
+- **Né un 29 février : affiché le dernier jour de février** (le 28 les années non bissextiles), avec la règle `FREQ=YEARLY;BYMONTH=2;BYMONTHDAY=-1`.
+
 ## Idées pour la v2 💡
 
 - **Widget** : impossible pour une appli web (ni iPhone ni Android) ; avec l'abonnement `.ics`, le widget du Calendrier Apple afficherait nos événements. Alternative écartée : appli native (compte développeur Apple payant).

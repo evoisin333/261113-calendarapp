@@ -92,6 +92,7 @@ Pour changer de version : changer le numéro **et** l'empreinte dans `index.html
 - Déplacer : **appui long** sur un événement puis glisser ; tirer le bord du bas pour la durée. Les événements récurrents ne se déplacent pas en glissant (passer par le formulaire).
 - Une seule date d'une série : la toucher, puis « Supprimer cette date » ou « Détacher cette date ».
 - Rechercher : la loupe 🔍 (titre, lieu, notes ; sans accents ni majuscules).
+- **Anniversaires** : choisir le calendrier « Anniversaires » (jaune) coche tout seul « journée entière » et « chaque année ». Né un 29 février : affiché le 28 les années non bissextiles.
 - Masquer un calendrier, se déconnecter : le menu (icône à gauche de la loupe).
 
 ### 🩺 Onglet Remboursements
