@@ -2,5 +2,7 @@
 // on n'y met que la clé "publishable", JAMAIS la clé secrète (sb_secret_…).
 const CONFIG = {
   supabaseUrl: "https://npcopdfvmtfjcygifree.supabase.co",
-  supabaseCle: "sb_publishable_3xV4hG-iQpYVNyRvb7bmng_zVwntnWI"
+  supabaseCle: "sb_publishable_3xV4hG-iQpYVNyRvb7bmng_zVwntnWI",
+  // Début de l'assurance DKV : les séances d'avant cette date ne sont pas remboursées par la DKV
+  debutDkv: "2026-10-19"
 };

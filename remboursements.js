@@ -45,19 +45,25 @@ function etatMutuelle(s) {
   if (s.mutuelle_deduite || s.rembourse_mutuelle_le) return "faite";
   return s.envoye_mutuelle_le ? "attente" : "a_envoyer";
 }
-// DKV : "faite", "attente", "a_envoyer" (la mutuelle est faite), "apres" (attendre la mutuelle)
+// Séance d'avant le début de la DKV (config.js) : pas couverte par la DKV
+function avantDkv(date) { return Boolean(CONFIG.debutDkv && date && date < CONFIG.debutDkv); }
+
+// DKV : "sans" (avant la DKV), "faite", "attente", "a_envoyer" (la mutuelle est faite),
+// "apres" (attendre la mutuelle)
 function etatDkv(s) {
+  if (avantDkv(s.date_seance)) return "sans";
   if (s.rembourse_dkv_le) return "faite";
   if (s.envoye_dkv_le) return "attente";
   return etatMutuelle(s) === "faite" ? "a_envoyer" : "apres";
 }
-function seanceTerminee(s) { return etatMutuelle(s) === "faite" && etatDkv(s) === "faite"; }
+function seanceTerminee(s) { return etatMutuelle(s) === "faite" && ["faite", "sans"].includes(etatDkv(s)); }
 
 // Ce qui reste à ta charge, si les montants remboursés sont connus
 function resteACharge(s) {
   const mutuelleConnue = s.mutuelle_deduite || s.montant_mutuelle !== null;
-  if (!mutuelleConnue || s.montant_dkv === null) return null;
-  return Number(s.montant_paye) - (s.mutuelle_deduite ? 0 : Number(s.montant_mutuelle)) - Number(s.montant_dkv);
+  const dkv = avantDkv(s.date_seance) ? 0 : s.montant_dkv;
+  if (!mutuelleConnue || dkv === null) return null;
+  return Number(s.montant_paye) - (s.mutuelle_deduite ? 0 : Number(s.montant_mutuelle)) - Number(dkv);
 }
 
 function seancesDe(dossier) {
@@ -237,7 +243,7 @@ function carteDossier(dossier) {
 }
 
 const TEXTES_MUTUELLE = { faite: "Mut. ✓", attente: "Mut. envoyée", a_envoyer: "Mut. à envoyer" };
-const TEXTES_DKV = { faite: "DKV ✓", attente: "DKV envoyée", a_envoyer: "DKV à envoyer", apres: "DKV après" };
+const TEXTES_DKV = { faite: "DKV ✓", attente: "DKV envoyée", a_envoyer: "DKV à envoyer", apres: "DKV après", sans: "Sans DKV" };
 
 function ligneSeance(dossier, seance, numero) {
   const ligne = document.createElement("button");
@@ -314,14 +320,24 @@ const fenetreAction = document.getElementById("fenetre-action");
 const champDateAction = document.getElementById("champ-date-action");
 const champMontantAction = document.getElementById("champ-montant-action");
 let actionEnCours = null;
+let idsAction = [];   // séances concernées (sans celles d'avant la DKV pour une action DKV)
 
 for (const bouton of barreSelection.querySelectorAll("[data-action]")) {
   bouton.addEventListener("click", () => {
     if (!verifierEnLigne()) return;
     actionEnCours = ACTIONS[bouton.dataset.action];
-    const nombre = seancesCochees.size;
+    const actionDkv = actionEnCours.date.includes("dkv");
+    const toutes = dossiers.flatMap(seancesDe);
+    idsAction = [...seancesCochees].filter((id) => !actionDkv || !avantDkv(toutes.find((s) => s.id === id)?.date_seance));
+    const ignorees = seancesCochees.size - idsAction.length;
+    if (idsAction.length === 0) {
+      afficherMessage("Ces séances sont d'avant la DKV : rien à envoyer à la DKV.");
+      return;
+    }
+    const nombre = idsAction.length;
     document.getElementById("titre-action").textContent = actionEnCours.titre;
     document.getElementById("note-action").textContent = `${nombre} séance${nombre > 1 ? "s" : ""}.` +
+      (ignorees ? ` ${ignorees} d'avant la DKV ignorée${ignorees > 1 ? "s" : ""}.` : "") +
       (actionEnCours.montant && nombre > 1 ? " Le total est réparti à parts égales (corrigeable séance par séance)." : "");
     document.getElementById("ligne-montant-action").hidden = !actionEnCours.montant;
     champDateAction.value = aujourdhui();
@@ -344,7 +360,7 @@ document.getElementById("bouton-valider-action").addEventListener("click", async
   const montant = actionEnCours.montant ? lireMontant(champMontantAction.value) : null;
   if (!champDateAction.value) { erreur.textContent = "Choisis une date."; return; }
   if (Number.isNaN(montant)) { erreur.textContent = "Montant invalide (ex. 54,30)."; return; }
-  const ids = [...seancesCochees];
+  const ids = idsAction;
   const parts = montant === null ? null : repartir(montant, ids.length);
   const resultats = await Promise.all(ids.map((id, i) => {
     const changement = { [actionEnCours.date]: champDateAction.value };
@@ -651,12 +667,15 @@ const ETAPES = Object.values(ACTIONS).map((action) => {
 function majEtapes() {
   for (const etape of ETAPES) {
     const mutuelle = etape.action.date.includes("mutuelle");
-    etape.bloc.hidden = mutuelle && champDeduiteSeance.checked;   // retirée sur place : pas d'envoi
+    etape.bloc.hidden = mutuelle
+      ? champDeduiteSeance.checked                 // retirée sur place : pas d'envoi
+      : avantDkv(champDateSeance.value);           // avant le début de la DKV : pas d'étapes DKV
     for (const detail of etape.bloc.querySelectorAll(".details-etape")) detail.hidden = !etape.interrupteur.checked;
   }
   majResteSeance();
 }
 champDeduiteSeance.addEventListener("change", majEtapes);
+champDateSeance.addEventListener("change", majEtapes);
 champMontantSeance.addEventListener("input", majResteSeance);
 
 function majResteSeance() {

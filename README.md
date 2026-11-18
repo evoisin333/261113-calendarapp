@@ -103,3 +103,4 @@ Pour changer de version : changer le numéro **et** l'empreinte dans `index.html
 - Toucher le nom d'un soin : modifier, ajouter des **photos des documents** (attestation, facture, décompte), tout supprimer. Quand tout est remboursé, « Supprimer les documents » libère la place.
 - **À faire** montre seulement ce qui reste à envoyer ou à recevoir ; **Tout** montre aussi ce qui est terminé.
 - Puces : orange = à envoyer, bleu = envoyé (on attend), vert = fait. « DKV après » = la mutuelle d'abord.
+- « Sans DKV » : séance d'avant le début de la DKV (19/10/2026, réglé dans `config.js` → `debutDkv`). Pas d'étapes DKV pour ces séances.

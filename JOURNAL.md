@@ -121,6 +121,12 @@ Pour chaque choix : la raison, l'alternative écartée et la limite que ça indu
 - **Hors connexion : lecture seule, avec une copie sur le téléphone** (effacée à la déconnexion). Les photos ne sont pas copiées.
 - **Correction** : les boutons du calendrier ne réagissent plus aux boutons « À faire / Tout » (même style, rôle différent).
 
+## Remboursements : début de la DKV (18/11/2026)
+
+- **Séances d'avant le 19/10/2026 : « Sans DKV »** (date dans `config.js` → `debutDkv`, la même pour nous deux). Pas d'étapes DKV dans leur formulaire ; terminées dès que la mutuelle est faite ; ignorées (avec un message) dans un envoi groupé à la DKV. Raison : la DKV a commencé ce jour-là. Alternative écartée : une date par personne. Limite : si on change la date d'une séance pour avant le 19/10, ses dates DKV éventuelles sont effacées à l'enregistrement.
+- **Thème toujours clair (gris clair)**, même si le téléphone est en mode sombre (17/11). Raison : préférence d'apparence. Limite : écran lumineux le soir.
+- **Correction : la liste des remboursements défile** (les cartes étaient écrasées pour tenir dans l'écran).
+
 ## Idées pour la v2 💡
 
 - **Widget** : impossible pour une appli web (ni iPhone ni Android) ; avec l'abonnement `.ics`, le widget du Calendrier Apple afficherait nos événements. Alternative écartée : appli native (compte développeur Apple payant).
